@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 dhcproto = "0.8.0"
+rand = "0.8.5"

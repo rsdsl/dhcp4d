@@ -1,9 +1,11 @@
-use anyhow::anyhow;
-use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode};
-use dhcproto::{Decodable, Decoder, Encodable, Encoder};
+use dhcp4d::lease::LeaseDummyManager;
 
 use std::io;
-use std::net::{SocketAddr, SocketAddrV4, UdpSocket};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+
+use anyhow::{anyhow, bail};
+use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
+use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 
 fn main() -> io::Result<()> {
     let sock = UdpSocket::bind("0.0.0.0:67")?;
@@ -31,6 +33,7 @@ fn main() -> io::Result<()> {
 
 fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Result<()> {
     let chaddr = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let lease_mgr = LeaseDummyManager::new(None);
 
     let msg = Message::decode(&mut Decoder::new(buf))?;
 
@@ -46,11 +49,23 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
 
             match msg_type {
                 MessageType::Discover => {
+                    let client_id = match opts
+                        .get(OptionCode::ClientIdentifier)
+                        .ok_or(anyhow!("no client id from {}", remote))?
+                    {
+                        DhcpOption::ClientIdentifier(id) => id,
+                        _ => bail!("expected ClientIdentifier from {}", remote),
+                    };
+
+                    let free_addr = choose_free_address(&lease_mgr, client_id)
+                        .ok_or(anyhow!("no free addresses available for {}", remote))?;
+
                     let mut resp = Message::default();
                     let opts = resp
                         .set_flags(Flags::default().set_broadcast())
                         .set_opcode(Opcode::BootReply)
                         .set_xid(xid)
+                        .set_siaddr(free_addr)
                         .set_chaddr(chaddr)
                         .opts_mut();
 
@@ -79,4 +94,8 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
         }
         _ => Err(anyhow!("invalid opcode {:?} from {}", op, remote)),
     }
+}
+
+fn choose_free_address(lease_mgr: &LeaseDummyManager, client_id: &[u8]) -> Option<Ipv4Addr> {
+    lease_mgr.free()
 }
