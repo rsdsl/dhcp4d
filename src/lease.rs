@@ -15,3 +15,16 @@ impl Lease {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct LeaseDummyManager {
+    leases: Vec<Lease>,
+}
+
+impl LeaseDummyManager {
+    pub fn new(leases: Option<Vec<Lease>>) -> Self {
+        Self {
+            leases: leases.unwrap_or(Vec::new()),
+        }
+    }
+}
