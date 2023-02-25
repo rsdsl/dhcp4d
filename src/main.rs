@@ -49,8 +49,9 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                     let mut resp = Message::default();
                     let opts = resp
                         .set_flags(Flags::default().set_broadcast())
-                        .set_chaddr(chaddr)
+                        .set_opcode(Opcode::BootReply)
                         .set_xid(xid)
+                        .set_chaddr(chaddr)
                         .opts_mut();
 
                     opts.insert(DhcpOption::MessageType(MessageType::Offer));
