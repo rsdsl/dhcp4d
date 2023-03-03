@@ -19,6 +19,7 @@ impl Lease {
 pub trait LeaseManager {
     fn range(&self) -> (Ipv4Addr, Ipv4Addr);
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
+    fn request(&mut self, address: Ipv4Addr) -> bool;
 
     fn all_addresses(&self) -> Vec<Ipv4Addr> {
         let range = self.range();
@@ -35,6 +36,10 @@ pub trait LeaseManager {
 
     fn taken_addresses(&self) -> Box<dyn Iterator<Item = Ipv4Addr>> {
         Box::new(self.leases().map(|lease| lease.address))
+    }
+
+    fn is_taken(&self, address: Ipv4Addr) -> bool {
+        self.taken_addresses().any(|addr| addr == address)
     }
 
     fn any_free_address(&self) -> Option<Ipv4Addr> {
@@ -90,6 +95,24 @@ impl LeaseManager for LeaseDummyManager {
     }
 
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>> {
-        Box::new(std::iter::empty())
+        Box::new(
+            self.leases
+                .clone()
+                .into_iter()
+                .filter(|lease| SystemTime::now().duration_since(lease.expires).is_ok()),
+        )
+    }
+
+    fn request(&mut self, address: Ipv4Addr) -> bool {
+        if self.is_taken(address) {
+            false
+        } else {
+            self.leases.push(Lease {
+                address,
+                expires: SystemTime::now() + Duration::from_secs(300),
+            });
+
+            true
+        }
     }
 }
