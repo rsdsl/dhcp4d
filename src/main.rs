@@ -77,6 +77,7 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                     if n != resp_buf.len() {
                         Err(anyhow!("partial response"))
                     } else {
+                        println!("offering {} to client ID {:?}", free_addr, client_id);
                         Ok(())
                     }
                 }
