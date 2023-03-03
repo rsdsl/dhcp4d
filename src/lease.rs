@@ -28,7 +28,7 @@ pub trait LeaseManager {
         let mut addr = range.0;
         while addr < range.1 {
             addrs.push(addr);
-            addr = (u32::from_le_bytes(addr.octets()) + 1).into();
+            addr = (u32::from_be_bytes(addr.octets()) + 1).into();
         }
 
         addrs
@@ -60,7 +60,7 @@ pub trait LeaseManager {
     // The lack of guaranteed persistence shouldn't be a concern
     // for our use case.
     fn persistent_free_address(&self, client_id: &[u8]) -> Option<Ipv4Addr> {
-        let cid = u32::from_le_bytes(client_id[..4].try_into().unwrap()) as usize;
+        let cid = u32::from_be_bytes(client_id[..4].try_into().unwrap()) as usize;
         let all = self.all_addresses();
         let range = self.range();
 
@@ -68,7 +68,7 @@ pub trait LeaseManager {
         while attempts < self.free_addresses().len() {
             let offset = ((16 * attempts + cid) % all.len()) as u32;
 
-            let addr = (u32::from_le_bytes(range.0.octets()) + offset).into();
+            let addr = (u32::from_be_bytes(range.0.octets()) + offset).into();
             if !self.is_taken(addr) {
                 return Some(addr);
             }
@@ -119,8 +119,8 @@ impl LeaseDummyManager {
 impl LeaseManager for LeaseDummyManager {
     fn range(&self) -> (Ipv4Addr, Ipv4Addr) {
         (
-            "0.0.0.0".parse().unwrap(),
-            "255.255.255.255".parse().unwrap(),
+            "198.51.100.1".parse().unwrap(),
+            "198.51.100.255".parse().unwrap(),
         )
     }
 
