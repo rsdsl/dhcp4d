@@ -25,9 +25,9 @@ pub trait LeaseManager {
         let mut addrs = Vec::new();
 
         let mut addr = range.0;
-        while addr <= range.1 {
+        while addr < range.1 {
             addrs.push(addr);
-            addr = (u32::from_be_bytes(addr.octets()) + 1).into();
+            addr = (u32::from_le_bytes(addr.octets()) + 1).into();
         }
 
         addrs
