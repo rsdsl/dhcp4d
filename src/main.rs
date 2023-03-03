@@ -68,6 +68,9 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                         .opts_mut();
 
                     opts.insert(DhcpOption::MessageType(MessageType::Offer));
+                    opts.insert(DhcpOption::AddressLeaseTime(
+                        lease.lease_time.as_secs() as u32
+                    ));
 
                     let mut resp_buf = Vec::new();
                     resp.encode(&mut Encoder::new(&mut resp_buf))?;
