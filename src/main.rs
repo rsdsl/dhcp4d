@@ -63,7 +63,7 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                         .set_flags(Flags::default().set_broadcast())
                         .set_opcode(Opcode::BootReply)
                         .set_xid(xid)
-                        .set_siaddr(lease.address)
+                        .set_yiaddr(lease.address)
                         .set_chaddr(chaddr)
                         .opts_mut();
 
