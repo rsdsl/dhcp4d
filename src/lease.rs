@@ -36,6 +36,14 @@ pub trait LeaseManager {
     fn taken_addresses(&self) -> Box<dyn Iterator<Item = Ipv4Addr>> {
         Box::new(self.leases().map(|lease| lease.address))
     }
+
+    fn any_free_address(&self) -> Option<Ipv4Addr> {
+        let mut taken = self.taken_addresses();
+
+        self.all_addresses()
+            .into_iter()
+            .find(|addr| !taken.any(|e| &e == addr))
+    }
 }
 
 #[derive(Debug)]
@@ -70,5 +78,18 @@ impl LeaseDummyManager {
         } else {
             Some(Ipv4Addr::from(rand::random::<u32>()))
         }
+    }
+}
+
+impl LeaseManager for LeaseDummyManager {
+    fn range(&self) -> (Ipv4Addr, Ipv4Addr) {
+        (
+            "0.0.0.0".parse().unwrap(),
+            "255.255.255.255".parse().unwrap(),
+        )
+    }
+
+    fn leases(&self) -> Box<dyn Iterator<Item = Lease>> {
+        Box::new(std::iter::empty())
     }
 }

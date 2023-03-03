@@ -1,4 +1,4 @@
-use dhcp4d::lease::LeaseDummyManager;
+use dhcp4d::lease::{LeaseDummyManager, LeaseManager};
 
 use std::io;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
@@ -55,7 +55,7 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                         _ => bail!("expected ClientIdentifier"),
                     };
 
-                    let free_addr = choose_free_address(&lease_mgr, client_id)
+                    let free_addr = choose_free_address(lease_mgr, client_id)
                         .ok_or(anyhow!("no free addresses available"))?;
 
                     let mut resp = Message::default();
@@ -95,6 +95,6 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
     }
 }
 
-fn choose_free_address(lease_mgr: &LeaseDummyManager, client_id: &[u8]) -> Option<Ipv4Addr> {
-    lease_mgr.free()
+fn choose_free_address<T: LeaseManager>(lease_mgr: T, client_id: &[u8]) -> Option<Ipv4Addr> {
+    lease_mgr.any_free_address()
 }
