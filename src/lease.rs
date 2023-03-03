@@ -16,6 +16,28 @@ impl Lease {
     }
 }
 
+pub trait LeaseManager {
+    fn range(&self) -> (Ipv4Addr, Ipv4Addr);
+    fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
+
+    fn all_addresses(&self) -> Vec<Ipv4Addr> {
+        let range = self.range();
+        let mut addrs = Vec::new();
+
+        let mut addr = range.0;
+        while addr <= range.1 {
+            addrs.push(addr);
+            addr = (u32::from_be_bytes(addr.octets()) + 1).into();
+        }
+
+        addrs
+    }
+
+    fn taken_addresses(&self) -> Box<dyn Iterator<Item = Ipv4Addr>> {
+        Box::new(self.leases().map(|lease| lease.address))
+    }
+}
+
 #[derive(Debug)]
 pub struct LeaseDummyManager {
     leases: Vec<Lease>,
