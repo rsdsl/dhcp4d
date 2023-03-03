@@ -1,7 +1,7 @@
-use dhcp4d::lease::{LeaseDummyManager, LeaseManager};
+use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
 
 use std::io;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+use std::net::{SocketAddr, SocketAddrV4, UdpSocket};
 
 use anyhow::{anyhow, bail};
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
@@ -55,7 +55,7 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                         _ => bail!("expected ClientIdentifier"),
                     };
 
-                    let free_addr = choose_free_address(lease_mgr, client_id)
+                    let lease = obtain_lease(lease_mgr, client_id)
                         .ok_or(anyhow!("no free addresses available"))?;
 
                     let mut resp = Message::default();
@@ -63,7 +63,7 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                         .set_flags(Flags::default().set_broadcast())
                         .set_opcode(Opcode::BootReply)
                         .set_xid(xid)
-                        .set_siaddr(free_addr)
+                        .set_siaddr(lease.address)
                         .set_chaddr(chaddr)
                         .opts_mut();
 
@@ -83,7 +83,10 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                             .reduce(|acc, octet| acc + &octet)
                             .ok_or(anyhow!("zero-length client id"))?;
 
-                        println!("offering {} to client ID {}", free_addr, cid);
+                        println!(
+                            "offering {} to client ID {} for {:?}",
+                            lease.address, cid, lease.lease_time
+                        );
 
                         Ok(())
                     }
@@ -95,6 +98,6 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
     }
 }
 
-fn choose_free_address<T: LeaseManager>(lease_mgr: T, client_id: &[u8]) -> Option<Ipv4Addr> {
+fn obtain_lease<T: LeaseManager>(lease_mgr: T, client_id: &[u8]) -> Option<Lease> {
     lease_mgr.persistent_free_address(client_id)
 }

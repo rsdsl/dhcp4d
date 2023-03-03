@@ -5,6 +5,7 @@ use std::time::{Duration, SystemTime};
 pub struct Lease {
     pub address: Ipv4Addr,
     pub expires: SystemTime,
+    pub lease_time: Duration,
 }
 
 impl Lease {
@@ -12,6 +13,7 @@ impl Lease {
         Self {
             address,
             expires: SystemTime::now() + lease_time,
+            lease_time,
         }
     }
 }
@@ -20,6 +22,7 @@ pub trait LeaseManager {
     fn range(&self) -> (Ipv4Addr, Ipv4Addr);
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
     fn request(&mut self, address: Ipv4Addr) -> bool;
+    fn lease_time(&self) -> Duration;
 
     fn all_addresses(&self) -> Vec<Ipv4Addr> {
         let range = self.range();
@@ -51,15 +54,18 @@ pub trait LeaseManager {
             .collect()
     }
 
-    fn any_free_address(&self) -> Option<Ipv4Addr> {
-        self.free_addresses().into_iter().next()
+    fn any_free_address(&self) -> Option<Lease> {
+        self.free_addresses()
+            .into_iter()
+            .next()
+            .map(|addr| Lease::new(addr, self.lease_time()))
     }
 
     // Imperfect implementation. Lease manager implementations
     // should override the default behavior.
     // The lack of guaranteed persistence shouldn't be a concern
     // for our use case.
-    fn persistent_free_address(&self, client_id: &[u8]) -> Option<Ipv4Addr> {
+    fn persistent_free_address(&self, client_id: &[u8]) -> Option<Lease> {
         let cid = u32::from_be_bytes(client_id[..4].try_into().unwrap()) as usize;
         let all = self.all_addresses();
         let range = self.range();
@@ -70,7 +76,7 @@ pub trait LeaseManager {
 
             let addr = (u32::from_be_bytes(range.0.octets()) + offset).into();
             if !self.is_taken(addr) {
-                return Some(addr);
+                return Some(Lease::new(addr, self.lease_time()));
             }
 
             attempts += 1;
@@ -137,12 +143,13 @@ impl LeaseManager for LeaseDummyManager {
         if self.is_taken(address) {
             false
         } else {
-            self.leases.push(Lease {
-                address,
-                expires: SystemTime::now() + Duration::from_secs(300),
-            });
+            self.leases.push(Lease::new(address, self.lease_time()));
 
             true
         }
+    }
+
+    fn lease_time(&self) -> Duration {
+        Duration::from_secs(300)
     }
 }
