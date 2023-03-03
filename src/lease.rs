@@ -42,12 +42,42 @@ pub trait LeaseManager {
         self.taken_addresses().any(|addr| addr == address)
     }
 
-    fn any_free_address(&self) -> Option<Ipv4Addr> {
+    fn free_addresses(&self) -> Vec<Ipv4Addr> {
         let mut taken = self.taken_addresses();
 
         self.all_addresses()
             .into_iter()
-            .find(|addr| !taken.any(|e| &e == addr))
+            .filter(|addr| !taken.any(|e| &e == addr))
+            .collect()
+    }
+
+    fn any_free_address(&self) -> Option<Ipv4Addr> {
+        self.free_addresses().into_iter().next()
+    }
+
+    // Imperfect implementation. Lease manager implementations
+    // should override the default behavior.
+    // The lack of guaranteed persistence shouldn't be a concern
+    // for our use case.
+    fn persistent_free_address(&self, client_id: &[u8]) -> Option<Ipv4Addr> {
+        let cid = u32::from_le_bytes(client_id[..4].try_into().unwrap()) as usize;
+        let all = self.all_addresses();
+        let range = self.range();
+
+        let mut attempts = 0;
+        while attempts < self.free_addresses().len() {
+            let offset = ((16 * attempts + cid) % all.len()) as u32;
+
+            let addr = (u32::from_le_bytes(range.0.octets()) + offset).into();
+            if !self.is_taken(addr) {
+                return Some(addr);
+            }
+
+            attempts += 1;
+        }
+
+        // No more addresses left to try.
+        None
     }
 }
 

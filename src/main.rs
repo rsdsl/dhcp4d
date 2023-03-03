@@ -96,5 +96,5 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
 }
 
 fn choose_free_address<T: LeaseManager>(lease_mgr: T, client_id: &[u8]) -> Option<Ipv4Addr> {
-    lease_mgr.any_free_address()
+    lease_mgr.persistent_free_address(client_id)
 }
