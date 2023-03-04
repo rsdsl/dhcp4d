@@ -134,7 +134,7 @@ impl LeaseManager for LeaseDummyManager {
             self.leases
                 .clone()
                 .into_iter()
-                .filter(|lease| SystemTime::now().duration_since(lease.expires).is_ok()),
+                .filter(|lease| SystemTime::now().duration_since(lease.expires).is_err()),
         )
     }
 
