@@ -106,6 +106,8 @@ fn handle_request<T: LeaseManager>(
     remote: SocketAddrV4,
     link: &str,
 ) -> Result<()> {
+    let dst: SocketAddrV4 = "255.255.255.255:68".parse().unwrap();
+
     let msg = Message::decode(&mut Decoder::new(buf))?;
 
     let op = msg.opcode();
@@ -155,7 +157,7 @@ fn handle_request<T: LeaseManager>(
                     let mut resp_buf = Vec::new();
                     resp.encode(&mut Encoder::new(&mut resp_buf))?;
 
-                    let n = sock.send_to(&resp_buf, &remote.into())?;
+                    let n = sock.send_to(&resp_buf, &dst.into())?;
                     if n != resp_buf.len() {
                         Err(Error::PartialResponse)
                     } else {
@@ -208,7 +210,7 @@ fn handle_request<T: LeaseManager>(
                         let mut resp_buf = Vec::new();
                         resp.encode(&mut Encoder::new(&mut resp_buf))?;
 
-                        let n = sock.send_to(&resp_buf, &remote.into())?;
+                        let n = sock.send_to(&resp_buf, &dst.into())?;
                         if n != resp_buf.len() {
                             Err(Error::PartialResponse)
                         } else {
@@ -245,7 +247,7 @@ fn handle_request<T: LeaseManager>(
                         let mut resp_buf = Vec::new();
                         resp.encode(&mut Encoder::new(&mut resp_buf))?;
 
-                        let n = sock.send_to(&resp_buf, &remote.into())?;
+                        let n = sock.send_to(&resp_buf, &dst.into())?;
                         if n != resp_buf.len() {
                             Err(Error::PartialResponse)
                         } else {
