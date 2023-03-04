@@ -79,12 +79,15 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                     let lease = obtain_lease(lease_mgr, client_id)
                         .ok_or(anyhow!("no free addresses available"))?;
 
+                    let local_addr = sock.local_addr()?.as_socket_ipv4().unwrap();
+
                     let mut resp = Message::default();
                     let opts = resp
                         .set_flags(Flags::default().set_broadcast())
                         .set_opcode(Opcode::BootReply)
                         .set_xid(xid)
                         .set_yiaddr(lease.address)
+                        .set_siaddr(*local_addr.ip())
                         .set_chaddr(chaddr)
                         .opts_mut();
 
