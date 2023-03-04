@@ -1,7 +1,7 @@
 use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
 
 use std::mem::MaybeUninit;
-use std::net::{IpAddr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::thread;
 
 use anyhow::{anyhow, bail};
@@ -78,15 +78,13 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                     let lease = obtain_lease(lease_mgr, client_id)
                         .ok_or(anyhow!("no free addresses available"))?;
 
-                    let local_addr = sock.local_addr()?.as_socket_ipv4().unwrap();
-
                     let mut resp = Message::default();
                     let opts = resp
                         .set_flags(Flags::default().set_broadcast())
                         .set_opcode(Opcode::BootReply)
                         .set_xid(xid)
                         .set_yiaddr(lease.address)
-                        .set_siaddr(*local_addr.ip())
+                        .set_siaddr(own_address(sock))
                         .set_chaddr(msg.chaddr())
                         .opts_mut();
 
@@ -126,4 +124,9 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
 
 fn obtain_lease<T: LeaseManager>(lease_mgr: T, client_id: &[u8]) -> Option<Lease> {
     lease_mgr.persistent_free_address(client_id)
+}
+
+fn own_address(sock: &Socket) -> Ipv4Addr {
+    let local_addr = sock.local_addr().unwrap().as_socket_ipv4().unwrap();
+    *local_addr.ip()
 }
