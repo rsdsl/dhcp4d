@@ -182,15 +182,23 @@ fn handle_request<T: LeaseManager>(
                         _ => unreachable!(),
                     };
 
-                    let requested_addr = match opts
-                        .get(OptionCode::RequestedIpAddress)
-                        .ok_or(Error::NoAddrRequested)?
-                    {
-                        DhcpOption::RequestedIpAddress(addr) => addr,
-                        _ => unreachable!(),
-                    };
+                    let mut renew = false;
+                    let requested_addr =
+                        match opts.get(OptionCode::RequestedIpAddress).map(|v| match v {
+                            DhcpOption::RequestedIpAddress(addr) => addr,
+                            _ => unreachable!(),
+                        }) {
+                            Some(addr) => *addr,
+                            None => match lease_mgr.renew(client_id)? {
+                                Some(addr) => {
+                                    renew = true;
+                                    addr
+                                }
+                                None => return Err(Error::NoAddrRequested),
+                            },
+                        };
 
-                    if !lease_mgr.request(*requested_addr, client_id)? {
+                    if !lease_mgr.request(requested_addr, client_id)? {
                         let own_addr = local_ip(link)?;
 
                         let mut resp = Message::default();
@@ -198,7 +206,7 @@ fn handle_request<T: LeaseManager>(
                             .set_flags(Flags::default().set_broadcast())
                             .set_opcode(Opcode::BootReply)
                             .set_xid(xid)
-                            .set_yiaddr(*requested_addr)
+                            .set_yiaddr(requested_addr)
                             .set_siaddr(own_addr)
                             .set_chaddr(msg.chaddr())
                             .opts_mut();
@@ -213,12 +221,21 @@ fn handle_request<T: LeaseManager>(
                         if n != resp_buf.len() {
                             Err(Error::PartialResponse)
                         } else {
-                            println!(
-                                "not ackknowledging {} for client ID {} on {}",
-                                requested_addr,
-                                format_client_id(client_id)?,
-                                link
-                            );
+                            if renew {
+                                println!(
+                                    "not renewing {} for client ID {} on {}",
+                                    requested_addr,
+                                    format_client_id(client_id)?,
+                                    link
+                                );
+                            } else {
+                                println!(
+                                    "not ackknowledging {} for client ID {} on {}",
+                                    requested_addr,
+                                    format_client_id(client_id)?,
+                                    link
+                                );
+                            }
 
                             Ok(())
                         }
@@ -231,7 +248,7 @@ fn handle_request<T: LeaseManager>(
                             .set_flags(Flags::default().set_broadcast())
                             .set_opcode(Opcode::BootReply)
                             .set_xid(xid)
-                            .set_yiaddr(*requested_addr)
+                            .set_yiaddr(requested_addr)
                             .set_siaddr(own_addr)
                             .set_chaddr(msg.chaddr())
                             .opts_mut();
@@ -250,13 +267,23 @@ fn handle_request<T: LeaseManager>(
                         if n != resp_buf.len() {
                             Err(Error::PartialResponse)
                         } else {
-                            println!(
-                                "ackknowledging {} for client ID {} for {:?} on {}",
-                                requested_addr,
-                                format_client_id(client_id)?,
-                                lease_time,
-                                link
-                            );
+                            if renew {
+                                println!(
+                                    "renewing {} for client ID {} for {:?} on {}",
+                                    requested_addr,
+                                    format_client_id(client_id)?,
+                                    lease_time,
+                                    link
+                                );
+                            } else {
+                                println!(
+                                    "ackknowledging {} for client ID {} for {:?} on {}",
+                                    requested_addr,
+                                    format_client_id(client_id)?,
+                                    lease_time,
+                                    link
+                                );
+                            }
 
                             Ok(())
                         }

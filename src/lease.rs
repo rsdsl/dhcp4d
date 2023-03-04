@@ -29,6 +29,11 @@ impl Lease {
     pub fn expired(&self) -> bool {
         SystemTime::now().duration_since(self.expires).is_ok()
     }
+
+    pub fn renew(&mut self, lease_time: Duration) {
+        self.expires = SystemTime::now() + lease_time;
+        self.lease_time = lease_time;
+    }
 }
 
 pub trait LeaseManager {
@@ -37,6 +42,7 @@ pub trait LeaseManager {
     fn lease_time(&self) -> Duration;
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
     fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool>;
+    fn renew(&mut self, client_id: &[u8]) -> Result<Option<Ipv4Addr>>;
     fn release(&mut self, client_id: &[u8]) -> Result<Box<dyn Iterator<Item = Ipv4Addr>>>;
 
     fn all_addresses(&self) -> Vec<Ipv4Addr> {
@@ -184,6 +190,21 @@ impl LeaseManager for LeaseDummyManager {
         }
     }
 
+    fn renew(&mut self, client_id: &[u8]) -> Result<Option<Ipv4Addr>> {
+        let lease_time = self.lease_time();
+        let mut address = None;
+
+        self.leases
+            .iter_mut()
+            .filter(|lease| lease.client_id == client_id)
+            .for_each(|lease| {
+                address = Some(lease.address);
+                lease.renew(lease_time);
+            });
+
+        Ok(address)
+    }
+
     fn release(&mut self, client_id: &[u8]) -> Result<Box<dyn Iterator<Item = Ipv4Addr>>> {
         let mut released = Vec::new();
 
@@ -278,9 +299,9 @@ impl LeaseManager for LeaseFileManager {
     }
 
     fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool> {
-        let range = self.range();
-
         self.garbage_collect()?;
+
+        let range = self.range();
 
         if self.is_unavailable(address, client_id)
             || !Ipv4AddrRange::new(range.0, range.1).any(|addr| addr == address)
@@ -303,6 +324,24 @@ impl LeaseManager for LeaseFileManager {
             self.save()?;
             Ok(true)
         }
+    }
+
+    fn renew(&mut self, client_id: &[u8]) -> Result<Option<Ipv4Addr>> {
+        self.garbage_collect()?;
+
+        let lease_time = self.lease_time();
+        let mut address = None;
+
+        self.leases
+            .iter_mut()
+            .filter(|lease| lease.client_id == client_id)
+            .for_each(|lease| {
+                address = Some(lease.address);
+                lease.renew(lease_time);
+            });
+
+        self.save()?;
+        Ok(address)
     }
 
     fn release(&mut self, client_id: &[u8]) -> Result<Box<dyn Iterator<Item = Ipv4Addr>>> {
