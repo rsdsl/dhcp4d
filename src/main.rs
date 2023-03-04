@@ -1,11 +1,14 @@
 use dhcp4d::error::{Error, Result};
 use dhcp4d::lease::{LeaseFileManager, LeaseFileManagerConfig, LeaseManager};
-use dhcp4d::util::{format_client_id, local_ip};
+use dhcp4d::util::{format_client_id, local_ip, setsockopt};
 
+use std::ffi::CString;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::mem::MaybeUninit;
-use std::net::{IpAddr, SocketAddr, SocketAddrV4};
+use std::net::{SocketAddr, SocketAddrV4};
+use std::os::fd::AsRawFd;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -60,13 +63,23 @@ fn main() -> Result<()> {
 fn run<T: LeaseManager>(link: String, lease_mgr: Arc<Mutex<T>>) -> Result<()> {
     let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
 
-    let addresses = linkaddrs::ipv4_addresses(link)?;
-    let address = addresses.first().expect("interface has no IPv4 addresses");
-
-    let address = SocketAddr::new(IpAddr::V4(address.addr()), 67);
+    let address = SocketAddr::from_str("0.0.0.0:67")?;
     sock.bind(&address.into())?;
 
     sock.set_broadcast(true)?;
+    sock.set_reuse_port(true)?;
+
+    // Bind socket to interface.
+    unsafe {
+        let link_index = libc::if_nametoindex(CString::new(link)?.into_raw());
+
+        setsockopt(
+            sock.as_raw_fd(),
+            libc::IPPROTO_IP,
+            libc::SO_BINDTODEVICE,
+            link_index,
+        )?;
+    }
 
     loop {
         let mut buf = [MaybeUninit::new(0); 1024];

@@ -61,6 +61,7 @@ version = "0.1.0"
 dependencies = [
  "dhcproto",
  "ipnet",
+ "libc",
  "linkaddrs",
  "rand",
  "serde",

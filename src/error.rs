@@ -1,4 +1,6 @@
+use std::ffi;
 use std::io;
+use std::net;
 
 use dhcproto::v4::{MessageType, Opcode};
 use thiserror::Error;
@@ -31,6 +33,10 @@ pub enum Error {
     LinkAddrs(#[from] linkaddrs::Error),
     #[error("serde_json error")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("error parsing IP address")]
+    AddrParseError(#[from] net::AddrParseError),
+    #[error("ffi nul error (string contains nul bytes)")]
+    FfiNulError(#[from] ffi::NulError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
