@@ -6,8 +6,6 @@ use std::mem;
 use std::net::Ipv4Addr;
 use std::ptr;
 
-use socket2::Socket;
-
 /// Helper macro to execute a system call that returns an `io::Result`.
 macro_rules! syscall {
     ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
@@ -29,9 +27,11 @@ pub fn format_client_id(client_id: &[u8]) -> Result<String> {
         .ok_or(Error::EmptyClientId)
 }
 
-pub fn local_ip(sock: &Socket) -> Ipv4Addr {
-    let local_addr = sock.local_addr().unwrap().as_socket_ipv4().unwrap();
-    *local_addr.ip()
+pub fn local_ip(link: &str) -> Result<Ipv4Addr> {
+    Ok(linkaddrs::ipv4_addresses(link.to_owned())?
+        .first()
+        .ok_or(Error::NoIpv4Addr(link.to_owned()))?
+        .addr())
 }
 
 #[allow(clippy::missing_safety_doc)]

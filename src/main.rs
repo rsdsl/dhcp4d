@@ -133,7 +133,7 @@ fn handle_request<T: LeaseManager>(
                         .persistent_free_address(client_id)
                         .ok_or(Error::PoolExhausted)?;
 
-                    let own_addr = local_ip(sock);
+                    let own_addr = local_ip(link)?;
 
                     let mut resp = Message::default();
                     let opts = resp
@@ -192,7 +192,7 @@ fn handle_request<T: LeaseManager>(
                     };
 
                     if !lease_mgr.request(*requested_addr, client_id)? {
-                        let own_addr = local_ip(sock);
+                        let own_addr = local_ip(link)?;
 
                         let mut resp = Message::default();
                         let opts = resp
@@ -225,7 +225,7 @@ fn handle_request<T: LeaseManager>(
                         }
                     } else {
                         let lease_time = lease_mgr.lease_time();
-                        let own_addr = local_ip(sock);
+                        let own_addr = local_ip(link)?;
 
                         let mut resp = Message::default();
                         let opts = resp

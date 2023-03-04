@@ -7,6 +7,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("no IPv4 address assigned to interface {0}")]
+    NoIpv4Addr(String),
     #[error("client sent unhandled or unknown opcode {0:?}")]
     InvalidOpcode(Opcode),
     #[error("client did not send a message type")]
@@ -29,6 +31,8 @@ pub enum Error {
     DhcprotoDecode(#[from] dhcproto::error::DecodeError),
     #[error("io error")]
     Io(#[from] io::Error),
+    #[error("linkaddrs error")]
+    LinkAddrs(#[from] linkaddrs::Error),
     #[error("serde_json error")]
     SerdeJson(#[from] serde_json::Error),
     #[error("error parsing IP address")]
