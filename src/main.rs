@@ -139,8 +139,31 @@ fn handle_request(
                     };
 
                     if !lease_mgr.request(*requested_addr) {
-                        // NAK
-                        todo!();
+                        let own_addr = own_address(sock);
+
+                        let mut resp = Message::default();
+                        let opts = resp
+                            .set_flags(Flags::default().set_broadcast())
+                            .set_opcode(Opcode::BootReply)
+                            .set_xid(xid)
+                            .set_yiaddr(*requested_addr)
+                            .set_siaddr(own_addr)
+                            .set_chaddr(msg.chaddr())
+                            .opts_mut();
+
+                        opts.insert(DhcpOption::MessageType(MessageType::Nak));
+                        opts.insert(DhcpOption::ServerIdentifier(own_addr));
+
+                        let mut resp_buf = Vec::new();
+                        resp.encode(&mut Encoder::new(&mut resp_buf))?;
+
+                        let n = sock.send_to(&resp_buf, &remote.into())?;
+                        if n != resp_buf.len() {
+                            Err(anyhow!("partial response"))
+                        } else {
+                            println!("not ackknowledging {}", requested_addr);
+                            Ok(())
+                        }
                     } else {
                         let lease_time = lease_mgr.lease_time();
                         let own_addr = own_address(sock);
