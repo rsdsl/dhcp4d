@@ -25,6 +25,10 @@ impl Lease {
             client_id,
         }
     }
+
+    pub fn expired(&self) -> bool {
+        SystemTime::now().duration_since(self.expires).is_ok()
+    }
 }
 
 pub trait LeaseManager {
@@ -110,7 +114,7 @@ impl LeaseDummyManager {
     pub fn free(&self) -> Option<Ipv4Addr> {
         let mut taken = Vec::new();
         for lease in &self.leases {
-            if SystemTime::now().duration_since(lease.expires).is_ok() {
+            if lease.expired() {
                 taken.push(lease.address);
             }
         }
@@ -151,7 +155,7 @@ impl LeaseManager for LeaseDummyManager {
             self.leases
                 .clone()
                 .into_iter()
-                .filter(|lease| SystemTime::now().duration_since(lease.expires).is_err()),
+                .filter(|lease| !lease.expired()),
         )
     }
 
@@ -239,7 +243,7 @@ impl LeaseFileManager {
             .leases
             .clone()
             .into_iter()
-            .filter(|lease| SystemTime::now().duration_since(lease.expires).is_err())
+            .filter(|lease| !lease.expired())
             .collect();
 
         self.save()?;
@@ -265,7 +269,7 @@ impl LeaseManager for LeaseFileManager {
             self.leases
                 .clone()
                 .into_iter()
-                .filter(|lease| SystemTime::now().duration_since(lease.expires).is_err()),
+                .filter(|lease| !lease.expired()),
         )
     }
 
