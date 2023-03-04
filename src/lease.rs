@@ -1,6 +1,8 @@
 use std::net::Ipv4Addr;
 use std::time::{Duration, SystemTime};
 
+use ipnet::Ipv4AddrRange;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Lease {
     pub address: Ipv4Addr,
@@ -27,15 +29,7 @@ pub trait LeaseManager {
 
     fn all_addresses(&self) -> Vec<Ipv4Addr> {
         let range = self.range();
-        let mut addrs = Vec::new();
-
-        let mut addr = range.0;
-        while addr < range.1 {
-            addrs.push(addr);
-            addr = (u32::from_be_bytes(addr.octets()) + 1).into();
-        }
-
-        addrs
+        Ipv4AddrRange::new(range.0, range.1).collect()
     }
 
     fn taken_addresses(&self) -> Box<dyn Iterator<Item = Ipv4Addr>> {

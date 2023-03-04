@@ -61,6 +61,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "dhcproto",
+ "ipnet",
  "linkaddrs",
  "rand",
  "socket2 0.5.1",
