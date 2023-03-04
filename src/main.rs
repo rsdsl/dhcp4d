@@ -1,9 +1,9 @@
 use dhcp4d::error::{Error, Result};
 use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
-use dhcp4d::util::format_client_id;
+use dhcp4d::util::{format_client_id, local_ip};
 
 use std::mem::MaybeUninit;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, SocketAddr, SocketAddrV4};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -85,7 +85,7 @@ fn handle_request(
                     let lease =
                         obtain_lease(lease_mgr.clone(), client_id).ok_or(Error::PoolExhausted)?;
 
-                    let own_addr = own_address(sock);
+                    let own_addr = local_ip(sock);
                     let lease_mgr = lease_mgr.lock().unwrap();
 
                     let mut resp = Message::default();
@@ -144,7 +144,7 @@ fn handle_request(
                     };
 
                     if !lease_mgr.request(*requested_addr, client_id) {
-                        let own_addr = own_address(sock);
+                        let own_addr = local_ip(sock);
 
                         let mut resp = Message::default();
                         let opts = resp
@@ -176,7 +176,7 @@ fn handle_request(
                         }
                     } else {
                         let lease_time = lease_mgr.lease_time();
-                        let own_addr = own_address(sock);
+                        let own_addr = local_ip(sock);
 
                         let mut resp = Message::default();
                         let opts = resp
@@ -246,9 +246,4 @@ fn handle_request(
 
 fn obtain_lease<T: LeaseManager>(lease_mgr: Arc<Mutex<T>>, client_id: &[u8]) -> Option<Lease> {
     lease_mgr.lock().unwrap().persistent_free_address(client_id)
-}
-
-fn own_address(sock: &Socket) -> Ipv4Addr {
-    let local_addr = sock.local_addr().unwrap().as_socket_ipv4().unwrap();
-    *local_addr.ip()
 }
