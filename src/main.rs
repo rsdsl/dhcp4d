@@ -1,5 +1,5 @@
 use dhcp4d::error::{Error, Result};
-use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
+use dhcp4d::lease::{LeaseDummyManager, LeaseManager};
 use dhcp4d::util::{format_client_id, local_ip};
 
 use std::mem::MaybeUninit;
@@ -82,11 +82,12 @@ fn handle_request(
                         _ => unreachable!(),
                     };
 
-                    let lease =
-                        obtain_lease(lease_mgr.clone(), client_id).ok_or(Error::PoolExhausted)?;
+                    let lease_mgr = lease_mgr.lock().unwrap();
+                    let lease = lease_mgr
+                        .persistent_free_address(client_id)
+                        .ok_or(Error::PoolExhausted)?;
 
                     let own_addr = local_ip(sock);
-                    let lease_mgr = lease_mgr.lock().unwrap();
 
                     let mut resp = Message::default();
                     let opts = resp
@@ -242,8 +243,4 @@ fn handle_request(
         }
         _ => Err(Error::InvalidOpcode(op)),
     }
-}
-
-fn obtain_lease<T: LeaseManager>(lease_mgr: Arc<Mutex<T>>, client_id: &[u8]) -> Option<Lease> {
-    lease_mgr.lock().unwrap().persistent_free_address(client_id)
 }
