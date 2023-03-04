@@ -1,10 +1,8 @@
 use crate::error::{Error, Result};
 
-use std::ffi::c_int;
+use std::ffi::{c_char, c_int};
 use std::io;
-use std::mem;
 use std::net::Ipv4Addr;
-use std::ptr;
 
 /// Helper macro to execute a system call that returns an `io::Result`.
 macro_rules! syscall {
@@ -35,14 +33,19 @@ pub fn local_ip(link: &str) -> Result<Ipv4Addr> {
 }
 
 #[allow(clippy::missing_safety_doc)]
-pub unsafe fn setsockopt<T>(fd: c_int, opt: c_int, val: c_int, payload: T) -> io::Result<()> {
-    let payload = ptr::addr_of!(payload).cast();
+pub unsafe fn setsockopt(
+    fd: c_int,
+    opt: c_int,
+    val: c_int,
+    payload: *const c_char,
+    optlen: c_int,
+) -> io::Result<()> {
     syscall!(setsockopt(
         fd,
         opt,
         val,
-        payload,
-        mem::size_of::<T>() as libc::socklen_t
+        payload.cast(),
+        optlen as libc::socklen_t
     ))
     .map(|_| ())
 }

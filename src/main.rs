@@ -62,23 +62,28 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
 
     let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
 
-    let address = SocketAddr::from_str("0.0.0.0:67")?;
-    sock.bind(&address.into())?;
-
     sock.set_broadcast(true)?;
     sock.set_reuse_port(true)?;
+    sock.set_reuse_address(true)?;
 
     // Bind socket to interface.
     unsafe {
-        let link_index = libc::if_nametoindex(CString::new(link.clone())?.into_raw());
+        let link_index = CString::new(link.clone())?.into_raw();
 
         setsockopt(
             sock.as_raw_fd(),
-            libc::IPPROTO_IP,
+            libc::SOL_SOCKET,
             libc::SO_BINDTODEVICE,
             link_index,
+            link.len() as i32,
         )?;
+
+        // Prevent memory leak.
+        let _ = CString::from_raw(link_index);
     }
+
+    let address = SocketAddr::from_str("0.0.0.0:67")?;
+    sock.bind(&address.into())?;
 
     loop {
         let mut buf = [MaybeUninit::new(0); 1024];
