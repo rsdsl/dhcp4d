@@ -37,7 +37,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
             Ipv4Addr::new(10, 42, subnet_id, 249),
         ),
         netmask: Ipv4Addr::new(255, 255, 255, 0),
-        lease_time: Duration::from_secs(30),
+        lease_time: Duration::from_secs(43200),
     };
 
     let lease_file = format!("leases_{}.json", link);
