@@ -42,6 +42,11 @@ pub trait LeaseManager {
         self.taken_addresses().any(|addr| addr == address)
     }
 
+    fn is_unavailable(&self, address: Ipv4Addr, client_id: &[u8]) -> bool {
+        self.leases()
+            .any(|lease| lease.address == address && lease.client_id != client_id)
+    }
+
     fn free_addresses(&self) -> Vec<Ipv4Addr> {
         let mut taken = self.taken_addresses();
 
@@ -141,9 +146,19 @@ impl LeaseManager for LeaseDummyManager {
     }
 
     fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> bool {
-        if self.is_taken(address) {
+        if self.is_unavailable(address, client_id) {
             false
         } else {
+            let lease = self
+                .leases
+                .iter()
+                .enumerate()
+                .find(|(_, v)| v.client_id == client_id);
+
+            if let Some(lease) = lease {
+                self.leases.remove(lease.0);
+            }
+
             self.leases
                 .push(Lease::new(address, self.lease_time(), client_id.to_vec()));
 
