@@ -6,7 +6,7 @@ use std::ffi::CString;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::mem::MaybeUninit;
-use std::net::{SocketAddr, SocketAddrV4};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::os::fd::AsRawFd;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -17,40 +17,10 @@ use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
 
-const LEASE_FILE: &str = "leases.json";
-
 fn main() -> Result<()> {
-    let config = LeaseFileManagerConfig {
-        range: (
-            "198.51.100.100".parse().unwrap(),
-            "198.51.100.249".parse().unwrap(),
-        ),
-        netmask: "255.255.255.0".parse().unwrap(),
-        lease_time: Duration::from_secs(300),
-    };
-
-    if fs::metadata(LEASE_FILE).is_err() {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .read(false)
-            .write(true)
-            .open(LEASE_FILE)?;
-
-        file.write_all(b"[]")?;
-    }
-
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .truncate(false)
-        .open(LEASE_FILE)?;
-
-    let lease_mgr = Arc::new(Mutex::new(LeaseFileManager::new(config, file)?));
-
     let mut threads = Vec::new();
-    for arg in std::env::args().skip(1) {
-        let cloned_mgr = Arc::clone(&lease_mgr);
-        threads.push(thread::spawn(|| run(arg, cloned_mgr)));
+    for (i, arg) in std::env::args().skip(1).enumerate() {
+        threads.push(thread::spawn(move || run(arg, i as u8)));
     }
 
     for handle in threads {
@@ -60,7 +30,36 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run<T: LeaseManager>(link: String, lease_mgr: Arc<Mutex<T>>) -> Result<()> {
+fn run(link: String, subnet_id: u8) -> Result<()> {
+    let config = LeaseFileManagerConfig {
+        range: (
+            Ipv4Addr::new(10, 42, subnet_id, 100),
+            Ipv4Addr::new(10, 42, subnet_id, 249),
+        ),
+        netmask: Ipv4Addr::new(255, 255, 255, 0),
+        lease_time: Duration::from_secs(60),
+    };
+
+    let lease_file = format!("leases_{}.json", link);
+
+    if fs::metadata(&lease_file).is_err() {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .read(false)
+            .write(true)
+            .open(&lease_file)?;
+
+        file.write_all(b"[]")?;
+    }
+
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(&lease_file)?;
+
+    let lease_mgr = Arc::new(Mutex::new(LeaseFileManager::new(config, file)?));
+
     let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
 
     let address = SocketAddr::from_str("0.0.0.0:67")?;
