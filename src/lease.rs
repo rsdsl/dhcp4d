@@ -8,14 +8,16 @@ pub struct Lease {
     pub address: Ipv4Addr,
     pub expires: SystemTime,
     pub lease_time: Duration,
+    pub client_id: Vec<u8>,
 }
 
 impl Lease {
-    pub fn new(address: Ipv4Addr, lease_time: Duration) -> Self {
+    pub fn new(address: Ipv4Addr, lease_time: Duration, client_id: Vec<u8>) -> Self {
         Self {
             address,
             expires: SystemTime::now() + lease_time,
             lease_time,
+            client_id,
         }
     }
 }
@@ -24,7 +26,7 @@ pub trait LeaseManager {
     fn range(&self) -> (Ipv4Addr, Ipv4Addr);
     fn netmask(&self) -> Ipv4Addr;
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
-    fn request(&mut self, address: Ipv4Addr) -> bool;
+    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> bool;
     fn lease_time(&self) -> Duration;
 
     fn all_addresses(&self) -> Vec<Ipv4Addr> {
@@ -49,11 +51,11 @@ pub trait LeaseManager {
             .collect()
     }
 
-    fn any_free_address(&self) -> Option<Lease> {
+    fn any_free_address(&self, client_id: Vec<u8>) -> Option<Lease> {
         self.free_addresses()
             .into_iter()
             .next()
-            .map(|addr| Lease::new(addr, self.lease_time()))
+            .map(|addr| Lease::new(addr, self.lease_time(), client_id))
     }
 
     // Imperfect implementation. Lease manager implementations
@@ -71,7 +73,7 @@ pub trait LeaseManager {
 
             let addr = (u32::from_be_bytes(range.0.octets()) + offset).into();
             if !self.is_taken(addr) {
-                return Some(Lease::new(addr, self.lease_time()));
+                return Some(Lease::new(addr, self.lease_time(), client_id.to_vec()));
             }
 
             attempts += 1;
@@ -138,11 +140,12 @@ impl LeaseManager for LeaseDummyManager {
         )
     }
 
-    fn request(&mut self, address: Ipv4Addr) -> bool {
+    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> bool {
         if self.is_taken(address) {
             false
         } else {
-            self.leases.push(Lease::new(address, self.lease_time()));
+            self.leases
+                .push(Lease::new(address, self.lease_time(), client_id.to_vec()));
 
             true
         }

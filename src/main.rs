@@ -130,6 +130,14 @@ fn handle_request(
                 MessageType::Request => {
                     let mut lease_mgr = lease_mgr.lock().unwrap();
 
+                    let client_id = match opts
+                        .get(OptionCode::ClientIdentifier)
+                        .ok_or(anyhow!("no client id"))?
+                    {
+                        DhcpOption::ClientIdentifier(id) => id,
+                        _ => bail!("expected ClientIdentifier"),
+                    };
+
                     let requested_addr = match opts
                         .get(OptionCode::RequestedIpAddress)
                         .ok_or(anyhow!("no address requested"))?
@@ -138,7 +146,7 @@ fn handle_request(
                         _ => bail!("expected RequestedIpAddress"),
                     };
 
-                    if !lease_mgr.request(*requested_addr) {
+                    if !lease_mgr.request(*requested_addr, client_id) {
                         let own_addr = own_address(sock);
 
                         let mut resp = Message::default();
@@ -161,7 +169,17 @@ fn handle_request(
                         if n != resp_buf.len() {
                             Err(anyhow!("partial response"))
                         } else {
-                            println!("not ackknowledging {}", requested_addr);
+                            let cid = client_id
+                                .iter()
+                                .map(|octet| format!("{:x}", octet))
+                                .reduce(|acc, octet| acc + &octet)
+                                .ok_or(anyhow!("zero-length client id"))?;
+
+                            println!(
+                                "not ackknowledging {} for client ID {}",
+                                requested_addr, cid
+                            );
+
                             Ok(())
                         }
                     } else {
@@ -192,7 +210,17 @@ fn handle_request(
                         if n != resp_buf.len() {
                             Err(anyhow!("partial response"))
                         } else {
-                            println!("ackknowledging {} for {:?}", requested_addr, lease_time);
+                            let cid = client_id
+                                .iter()
+                                .map(|octet| format!("{:x}", octet))
+                                .reduce(|acc, octet| acc + &octet)
+                                .ok_or(anyhow!("zero-length client id"))?;
+
+                            println!(
+                                "ackknowledging {} for client ID {} for {:?}",
+                                requested_addr, cid, lease_time
+                            );
+
                             Ok(())
                         }
                     }
