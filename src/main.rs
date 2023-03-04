@@ -1,5 +1,6 @@
 use dhcp4d::error::{Error, Result};
 use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
+use dhcp4d::util::format_client_id;
 
 use std::mem::MaybeUninit;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
@@ -113,15 +114,11 @@ fn handle_request(
                     if n != resp_buf.len() {
                         Err(Error::PartialResponse)
                     } else {
-                        let cid = client_id
-                            .iter()
-                            .map(|octet| format!("{:x}", octet))
-                            .reduce(|acc, octet| acc + &octet)
-                            .ok_or(Error::EmptyClientId)?;
-
                         println!(
                             "offering {} to client ID {} for {:?}",
-                            lease.address, cid, lease.lease_time
+                            lease.address,
+                            format_client_id(client_id)?,
+                            lease.lease_time
                         );
 
                         Ok(())
@@ -169,15 +166,10 @@ fn handle_request(
                         if n != resp_buf.len() {
                             Err(Error::PartialResponse)
                         } else {
-                            let cid = client_id
-                                .iter()
-                                .map(|octet| format!("{:x}", octet))
-                                .reduce(|acc, octet| acc + &octet)
-                                .ok_or(Error::EmptyClientId)?;
-
                             println!(
                                 "not ackknowledging {} for client ID {}",
-                                requested_addr, cid
+                                requested_addr,
+                                format_client_id(client_id)?
                             );
 
                             Ok(())
@@ -210,15 +202,11 @@ fn handle_request(
                         if n != resp_buf.len() {
                             Err(Error::PartialResponse)
                         } else {
-                            let cid = client_id
-                                .iter()
-                                .map(|octet| format!("{:x}", octet))
-                                .reduce(|acc, octet| acc + &octet)
-                                .ok_or(Error::EmptyClientId)?;
-
                             println!(
                                 "ackknowledging {} for client ID {} for {:?}",
-                                requested_addr, cid, lease_time
+                                requested_addr,
+                                format_client_id(client_id)?,
+                                lease_time
                             );
 
                             Ok(())
@@ -242,13 +230,11 @@ fn handle_request(
 
                     let released_pretty = released.join(", ");
 
-                    let cid = client_id
-                        .iter()
-                        .map(|octet| format!("{:x}", octet))
-                        .reduce(|acc, octet| acc + &octet)
-                        .ok_or(Error::EmptyClientId)?;
-
-                    println!("releasing {} for client ID {}", released_pretty, cid);
+                    println!(
+                        "releasing {} for client ID {}",
+                        released_pretty,
+                        format_client_id(client_id)?
+                    );
                     Ok(())
                 }
                 _ => Err(Error::InvalidMsgType(msg_type)),
