@@ -1,28 +1,32 @@
 use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
 
 use std::io;
-use std::net::{SocketAddr, SocketAddrV4, UdpSocket};
+use std::mem::MaybeUninit;
+use std::net::{SocketAddr, SocketAddrV4};
 
 use anyhow::{anyhow, bail};
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
+use socket2::{Domain, Socket, Type};
 
 fn main() -> io::Result<()> {
-    let sock = UdpSocket::bind("0.0.0.0:67")?;
+    let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
+
+    let address: SocketAddr = "0.0.0.0:67".parse().unwrap();
+    sock.bind(&address.into())?;
 
     sock.set_broadcast(true)?;
 
     loop {
-        let mut buf = [0; 1024];
+        let mut buf = [MaybeUninit::new(0); 1024];
         let (n, remote) = sock.recv_from(&mut buf)?;
-        let buf = &buf[..n];
+        let buf = &buf
+            .iter()
+            .take(n)
+            .map(|p| unsafe { p.assume_init() })
+            .collect::<Vec<u8>>();
 
-        let remote = match remote {
-            SocketAddr::V4(addr) => addr,
-            _ => {
-                unreachable!();
-            }
-        };
+        let remote = remote.as_socket_ipv4().unwrap();
 
         match handle_request(&sock, buf, remote) {
             Ok(_) => {}
@@ -31,7 +35,7 @@ fn main() -> io::Result<()> {
     }
 }
 
-fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Result<()> {
+fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Result<()> {
     let chaddr = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     let lease_mgr = LeaseDummyManager::new(None);
 
@@ -75,7 +79,7 @@ fn handle_request(sock: &UdpSocket, buf: &[u8], remote: SocketAddrV4) -> anyhow:
                     let mut resp_buf = Vec::new();
                     resp.encode(&mut Encoder::new(&mut resp_buf))?;
 
-                    let n = sock.send_to(&resp_buf, remote)?;
+                    let n = sock.send_to(&resp_buf, &remote.into())?;
 
                     if n != resp_buf.len() {
                         Err(anyhow!("partial response"))
