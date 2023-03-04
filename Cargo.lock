@@ -59,12 +59,12 @@ checksum = "23d8666cb01533c39dde32bcbab8e227b4ed6679b2c925eba05feabea39508fb"
 name = "dhcp4d"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "dhcproto",
  "ipnet",
  "linkaddrs",
  "rand",
  "socket2 0.5.1",
+ "thiserror",
 ]
 
 [[package]]

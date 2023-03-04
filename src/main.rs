@@ -1,3 +1,4 @@
+use dhcp4d::error::{Error, Result};
 use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
 
 use std::mem::MaybeUninit;
@@ -5,12 +6,11 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use anyhow::{anyhow, bail};
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     let lease_mgr = Arc::new(Mutex::new(LeaseDummyManager::new(None)));
 
     let mut threads = Vec::new();
@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn run(link: String, lease_mgr: Arc<Mutex<LeaseDummyManager>>) -> anyhow::Result<()> {
+fn run(link: String, lease_mgr: Arc<Mutex<LeaseDummyManager>>) -> Result<()> {
     let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
 
     let addresses = linkaddrs::ipv4_addresses(link)?;
@@ -60,7 +60,7 @@ fn handle_request(
     lease_mgr: Arc<Mutex<LeaseDummyManager>>,
     buf: &[u8],
     remote: SocketAddrV4,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let msg = Message::decode(&mut Decoder::new(buf))?;
 
     let op = msg.opcode();
@@ -69,20 +69,20 @@ fn handle_request(
             let xid = msg.xid();
             let opts = msg.opts();
 
-            let msg_type = opts.msg_type().ok_or(anyhow!("no message type given"))?;
+            let msg_type = opts.msg_type().ok_or(Error::NoMsgType)?;
 
             match msg_type {
                 MessageType::Discover => {
                     let client_id = match opts
                         .get(OptionCode::ClientIdentifier)
-                        .ok_or(anyhow!("no client id"))?
+                        .ok_or(Error::NoClientId)?
                     {
                         DhcpOption::ClientIdentifier(id) => id,
-                        _ => bail!("expected ClientIdentifier"),
+                        _ => unreachable!(),
                     };
 
-                    let lease = obtain_lease(lease_mgr.clone(), client_id)
-                        .ok_or(anyhow!("no free addresses available"))?;
+                    let lease =
+                        obtain_lease(lease_mgr.clone(), client_id).ok_or(Error::PoolExhausted)?;
 
                     let own_addr = own_address(sock);
                     let lease_mgr = lease_mgr.lock().unwrap();
@@ -111,13 +111,13 @@ fn handle_request(
 
                     let n = sock.send_to(&resp_buf, &remote.into())?;
                     if n != resp_buf.len() {
-                        Err(anyhow!("partial response"))
+                        Err(Error::PartialResponse)
                     } else {
                         let cid = client_id
                             .iter()
                             .map(|octet| format!("{:x}", octet))
                             .reduce(|acc, octet| acc + &octet)
-                            .ok_or(anyhow!("zero-length client id"))?;
+                            .ok_or(Error::EmptyClientId)?;
 
                         println!(
                             "offering {} to client ID {} for {:?}",
@@ -132,18 +132,18 @@ fn handle_request(
 
                     let client_id = match opts
                         .get(OptionCode::ClientIdentifier)
-                        .ok_or(anyhow!("no client id"))?
+                        .ok_or(Error::NoClientId)?
                     {
                         DhcpOption::ClientIdentifier(id) => id,
-                        _ => bail!("expected ClientIdentifier"),
+                        _ => unreachable!(),
                     };
 
                     let requested_addr = match opts
                         .get(OptionCode::RequestedIpAddress)
-                        .ok_or(anyhow!("no address requested"))?
+                        .ok_or(Error::NoAddrRequested)?
                     {
                         DhcpOption::RequestedIpAddress(addr) => addr,
-                        _ => bail!("expected RequestedIpAddress"),
+                        _ => unreachable!(),
                     };
 
                     if !lease_mgr.request(*requested_addr, client_id) {
@@ -167,13 +167,13 @@ fn handle_request(
 
                         let n = sock.send_to(&resp_buf, &remote.into())?;
                         if n != resp_buf.len() {
-                            Err(anyhow!("partial response"))
+                            Err(Error::PartialResponse)
                         } else {
                             let cid = client_id
                                 .iter()
                                 .map(|octet| format!("{:x}", octet))
                                 .reduce(|acc, octet| acc + &octet)
-                                .ok_or(anyhow!("zero-length client id"))?;
+                                .ok_or(Error::EmptyClientId)?;
 
                             println!(
                                 "not ackknowledging {} for client ID {}",
@@ -208,13 +208,13 @@ fn handle_request(
 
                         let n = sock.send_to(&resp_buf, &remote.into())?;
                         if n != resp_buf.len() {
-                            Err(anyhow!("partial response"))
+                            Err(Error::PartialResponse)
                         } else {
                             let cid = client_id
                                 .iter()
                                 .map(|octet| format!("{:x}", octet))
                                 .reduce(|acc, octet| acc + &octet)
-                                .ok_or(anyhow!("zero-length client id"))?;
+                                .ok_or(Error::EmptyClientId)?;
 
                             println!(
                                 "ackknowledging {} for client ID {} for {:?}",
@@ -228,10 +228,10 @@ fn handle_request(
                 MessageType::Release => {
                     let client_id = match opts
                         .get(OptionCode::ClientIdentifier)
-                        .ok_or(anyhow!("no client id"))?
+                        .ok_or(Error::NoClientId)?
                     {
                         DhcpOption::ClientIdentifier(id) => id,
-                        _ => bail!("expected ClientIdentifier"),
+                        _ => unreachable!(),
                     };
 
                     let mut lease_mgr = lease_mgr.lock().unwrap();
@@ -246,15 +246,15 @@ fn handle_request(
                         .iter()
                         .map(|octet| format!("{:x}", octet))
                         .reduce(|acc, octet| acc + &octet)
-                        .ok_or(anyhow!("zero-length client id"))?;
+                        .ok_or(Error::EmptyClientId)?;
 
                     println!("releasing {} for client ID {}", released_pretty, cid);
                     Ok(())
                 }
-                _ => Err(anyhow!("invalid message type {:?}", msg_type,)),
+                _ => Err(Error::InvalidMsgType(msg_type)),
             }
         }
-        _ => Err(anyhow!("invalid opcode {:?}", op)),
+        _ => Err(Error::InvalidOpcode(op)),
     }
 }
 
