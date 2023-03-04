@@ -9,7 +9,6 @@ edition = "2021"
 dhcproto = "0.8.0"
 ipnet = "2.7.1"
 libc = "0.2"
-linkaddrs = { git = "https://github.com/HimbeerserverDE/linkaddrs.git", version = "0.1.0" }
 rand = "0.8.5"
 serde = "1.0"
 serde_derive = "1.0"

@@ -29,8 +29,6 @@ pub enum Error {
     DhcprotoDecode(#[from] dhcproto::error::DecodeError),
     #[error("io error")]
     Io(#[from] io::Error),
-    #[error("linkaddrs error")]
-    LinkAddrs(#[from] linkaddrs::Error),
     #[error("serde_json error")]
     SerdeJson(#[from] serde_json::Error),
     #[error("error parsing IP address")]
