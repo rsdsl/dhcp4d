@@ -1,18 +1,35 @@
 use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
 
-use std::io;
 use std::mem::MaybeUninit;
-use std::net::{SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, SocketAddr, SocketAddrV4};
+use std::thread;
 
 use anyhow::{anyhow, bail};
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
 
-fn main() -> io::Result<()> {
+fn main() -> anyhow::Result<()> {
+    let mut threads = Vec::new();
+
+    for arg in std::env::args().skip(1) {
+        threads.push(thread::spawn(|| run(arg)));
+    }
+
+    for handle in threads {
+        handle.join().unwrap()?;
+    }
+
+    Ok(())
+}
+
+fn run(link: String) -> anyhow::Result<()> {
     let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
 
-    let address: SocketAddr = "0.0.0.0:67".parse().unwrap();
+    let addresses = linkaddrs::ipv4_addresses(link)?;
+    let address = addresses.first().expect("interface has no IPv4 addresses");
+
+    let address = SocketAddr::new(IpAddr::V4(address.addr()), 67);
     sock.bind(&address.into())?;
 
     sock.set_broadcast(true)?;
