@@ -91,7 +91,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
 
         let remote = remote.as_socket_ipv4().unwrap();
 
-        match handle_request(&sock, lease_mgr.clone(), buf, remote, &link) {
+        match handle_request(&sock, lease_mgr.clone(), buf, &link) {
             Ok(_) => {}
             Err(e) => eprintln!("erroneous request from {} on {}: {}", remote, link, e),
         }
@@ -102,7 +102,6 @@ fn handle_request<T: LeaseManager>(
     sock: &Socket,
     lease_mgr: Arc<Mutex<T>>,
     buf: &[u8],
-    remote: SocketAddrV4,
     link: &str,
 ) -> Result<()> {
     let dst: SocketAddrV4 = "255.255.255.255:68".parse().unwrap();
