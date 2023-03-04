@@ -160,7 +160,11 @@ impl LeaseManager for LeaseDummyManager {
     }
 
     fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool> {
-        if self.is_unavailable(address, client_id) {
+        let range = self.range();
+
+        if self.is_unavailable(address, client_id)
+            || !Ipv4AddrRange::new(range.0, range.1).any(|addr| addr == address)
+        {
             Ok(false)
         } else {
             let lease = self
@@ -274,9 +278,13 @@ impl LeaseManager for LeaseFileManager {
     }
 
     fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool> {
+        let range = self.range();
+
         self.garbage_collect()?;
 
-        if self.is_unavailable(address, client_id) {
+        if self.is_unavailable(address, client_id)
+            || !Ipv4AddrRange::new(range.0, range.1).any(|addr| addr == address)
+        {
             Ok(false)
         } else {
             let lease = self
