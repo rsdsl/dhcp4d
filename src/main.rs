@@ -53,7 +53,6 @@ fn run(link: String) -> anyhow::Result<()> {
 }
 
 fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Result<()> {
-    let chaddr = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     let lease_mgr = LeaseDummyManager::new(None);
 
     let msg = Message::decode(&mut Decoder::new(buf))?;
@@ -88,7 +87,7 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                         .set_xid(xid)
                         .set_yiaddr(lease.address)
                         .set_siaddr(*local_addr.ip())
-                        .set_chaddr(chaddr)
+                        .set_chaddr(msg.chaddr())
                         .opts_mut();
 
                     opts.insert(DhcpOption::MessageType(MessageType::Offer));
