@@ -75,8 +75,10 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                         _ => bail!("expected ClientIdentifier"),
                     };
 
-                    let lease = obtain_lease(lease_mgr, client_id)
+                    let lease = obtain_lease(&lease_mgr, client_id)
                         .ok_or(anyhow!("no free addresses available"))?;
+
+                    let own_addr = own_address(sock);
 
                     let mut resp = Message::default();
                     let opts = resp
@@ -84,14 +86,18 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                         .set_opcode(Opcode::BootReply)
                         .set_xid(xid)
                         .set_yiaddr(lease.address)
-                        .set_siaddr(own_address(sock))
+                        .set_siaddr(own_addr)
                         .set_chaddr(msg.chaddr())
                         .opts_mut();
 
                     opts.insert(DhcpOption::MessageType(MessageType::Offer));
+                    opts.insert(DhcpOption::SubnetMask(lease_mgr.netmask()));
+                    opts.insert(DhcpOption::Router(vec![own_addr]));
                     opts.insert(DhcpOption::AddressLeaseTime(
                         lease.lease_time.as_secs() as u32
                     ));
+                    opts.insert(DhcpOption::ServerIdentifier(own_addr));
+                    opts.insert(DhcpOption::DomainNameServer(vec![own_addr]));
 
                     let mut resp_buf = Vec::new();
                     resp.encode(&mut Encoder::new(&mut resp_buf))?;
@@ -122,7 +128,7 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
     }
 }
 
-fn obtain_lease<T: LeaseManager>(lease_mgr: T, client_id: &[u8]) -> Option<Lease> {
+fn obtain_lease<T: LeaseManager>(lease_mgr: &T, client_id: &[u8]) -> Option<Lease> {
     lease_mgr.persistent_free_address(client_id)
 }
 

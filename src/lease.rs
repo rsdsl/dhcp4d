@@ -20,6 +20,7 @@ impl Lease {
 
 pub trait LeaseManager {
     fn range(&self) -> (Ipv4Addr, Ipv4Addr);
+    fn netmask(&self) -> Ipv4Addr;
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
     fn request(&mut self, address: Ipv4Addr) -> bool;
     fn lease_time(&self) -> Duration;
@@ -128,6 +129,10 @@ impl LeaseManager for LeaseDummyManager {
             "198.51.100.1".parse().unwrap(),
             "198.51.100.255".parse().unwrap(),
         )
+    }
+
+    fn netmask(&self) -> Ipv4Addr {
+        "255.255.255.0".parse().unwrap()
     }
 
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>> {
