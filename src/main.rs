@@ -2,7 +2,8 @@ use dhcp4d::error::{Error, Result};
 use dhcp4d::lease::{LeaseFileManager, LeaseFileManagerConfig, LeaseManager};
 use dhcp4d::util::{format_client_id, local_ip};
 
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::mem::MaybeUninit;
 use std::net::{IpAddr, SocketAddr, SocketAddrV4};
 use std::sync::{Arc, Mutex};
@@ -12,6 +13,8 @@ use std::time::Duration;
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
+
+const LEASE_FILE: &str = "leases.json";
 
 fn main() -> Result<()> {
     let config = LeaseFileManagerConfig {
@@ -23,12 +26,21 @@ fn main() -> Result<()> {
         lease_time: Duration::from_secs(300),
     };
 
+    if fs::metadata(LEASE_FILE).is_err() {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .read(false)
+            .write(true)
+            .open(LEASE_FILE)?;
+
+        file.write_all(b"[]")?;
+    }
+
     let file = OpenOptions::new()
-        .create(true)
         .read(true)
         .write(true)
         .truncate(false)
-        .open("leases.json")?;
+        .open(LEASE_FILE)?;
 
     let lease_mgr = Arc::new(Mutex::new(LeaseFileManager::new(config, file)?));
 
