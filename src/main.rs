@@ -53,7 +53,7 @@ fn run(link: String) -> anyhow::Result<()> {
 }
 
 fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Result<()> {
-    let lease_mgr = LeaseDummyManager::new(None);
+    let mut lease_mgr = LeaseDummyManager::new(None);
 
     let msg = Message::decode(&mut Decoder::new(buf))?;
 
@@ -103,7 +103,6 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                     resp.encode(&mut Encoder::new(&mut resp_buf))?;
 
                     let n = sock.send_to(&resp_buf, &remote.into())?;
-
                     if n != resp_buf.len() {
                         Err(anyhow!("partial response"))
                     } else {
@@ -119,6 +118,51 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                         );
 
                         Ok(())
+                    }
+                }
+                MessageType::Request => {
+                    let requested_addr = match opts
+                        .get(OptionCode::RequestedIpAddress)
+                        .ok_or(anyhow!("no address requested"))?
+                    {
+                        DhcpOption::RequestedIpAddress(addr) => addr,
+                        _ => bail!("expected RequestedIpAddress"),
+                    };
+
+                    if !lease_mgr.request(*requested_addr) {
+                        // NAK
+                        todo!();
+                    } else {
+                        let lease_time = lease_mgr.lease_time();
+                        let own_addr = own_address(sock);
+
+                        let mut resp = Message::default();
+                        let opts = resp
+                            .set_flags(Flags::default().set_broadcast())
+                            .set_opcode(Opcode::BootReply)
+                            .set_xid(xid)
+                            .set_yiaddr(*requested_addr)
+                            .set_siaddr(own_addr)
+                            .set_chaddr(msg.chaddr())
+                            .opts_mut();
+
+                        opts.insert(DhcpOption::MessageType(MessageType::Ack));
+                        opts.insert(DhcpOption::SubnetMask(lease_mgr.netmask()));
+                        opts.insert(DhcpOption::Router(vec![own_addr]));
+                        opts.insert(DhcpOption::AddressLeaseTime(lease_time.as_secs() as u32));
+                        opts.insert(DhcpOption::ServerIdentifier(own_addr));
+                        opts.insert(DhcpOption::DomainNameServer(vec![own_addr]));
+
+                        let mut resp_buf = Vec::new();
+                        resp.encode(&mut Encoder::new(&mut resp_buf))?;
+
+                        let n = sock.send_to(&resp_buf, &remote.into())?;
+                        if n != resp_buf.len() {
+                            Err(anyhow!("partial response"))
+                        } else {
+                            println!("ackknowledging {} for {:?}", requested_addr, lease_time);
+                            Ok(())
+                        }
                     }
                 }
                 _ => Err(anyhow!("invalid message type {:?}", msg_type,)),
