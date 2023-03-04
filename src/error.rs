@@ -29,6 +29,8 @@ pub enum Error {
     Io(#[from] io::Error),
     #[error("linkaddrs error")]
     LinkAddrs(#[from] linkaddrs::Error),
+    #[error("serde_json error")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

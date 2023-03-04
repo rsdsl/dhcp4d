@@ -1,9 +1,14 @@
+use crate::error::Result;
+
+use std::fs::File;
+use std::io::Seek;
 use std::net::Ipv4Addr;
 use std::time::{Duration, SystemTime};
 
 use ipnet::Ipv4AddrRange;
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Lease {
     pub address: Ipv4Addr,
     pub expires: SystemTime,
@@ -25,10 +30,10 @@ impl Lease {
 pub trait LeaseManager {
     fn range(&self) -> (Ipv4Addr, Ipv4Addr);
     fn netmask(&self) -> Ipv4Addr;
-    fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
-    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> bool;
     fn lease_time(&self) -> Duration;
-    fn release(&mut self, client_id: &[u8]) -> Box<dyn Iterator<Item = Ipv4Addr>>;
+    fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
+    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool>;
+    fn release(&mut self, client_id: &[u8]) -> Result<Box<dyn Iterator<Item = Ipv4Addr>>>;
 
     fn all_addresses(&self) -> Vec<Ipv4Addr> {
         let range = self.range();
@@ -137,6 +142,10 @@ impl LeaseManager for LeaseDummyManager {
         "255.255.255.0".parse().unwrap()
     }
 
+    fn lease_time(&self) -> Duration {
+        Duration::from_secs(300)
+    }
+
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>> {
         Box::new(
             self.leases
@@ -146,9 +155,9 @@ impl LeaseManager for LeaseDummyManager {
         )
     }
 
-    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> bool {
+    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool> {
         if self.is_unavailable(address, client_id) {
-            false
+            Ok(false)
         } else {
             let lease = self
                 .leases
@@ -163,15 +172,11 @@ impl LeaseManager for LeaseDummyManager {
             self.leases
                 .push(Lease::new(address, self.lease_time(), client_id.to_vec()));
 
-            true
+            Ok(true)
         }
     }
 
-    fn lease_time(&self) -> Duration {
-        Duration::from_secs(300)
-    }
-
-    fn release(&mut self, client_id: &[u8]) -> Box<dyn Iterator<Item = Ipv4Addr>> {
+    fn release(&mut self, client_id: &[u8]) -> Result<Box<dyn Iterator<Item = Ipv4Addr>>> {
         let mut released = Vec::new();
 
         self.leases
@@ -184,6 +189,126 @@ impl LeaseManager for LeaseDummyManager {
                 released.push(lease.address);
             });
 
-        Box::new(released.into_iter())
+        Ok(Box::new(released.into_iter()))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct LeaseFileManagerConfig {
+    pub range: (Ipv4Addr, Ipv4Addr),
+    pub netmask: Ipv4Addr,
+    pub lease_time: Duration,
+}
+
+#[derive(Debug)]
+pub struct LeaseFileManager {
+    config: LeaseFileManagerConfig,
+    file: File,
+    leases: Vec<Lease>,
+}
+
+impl LeaseFileManager {
+    pub fn new(config: LeaseFileManagerConfig, file: File) -> Result<Self> {
+        let mut mgr = Self {
+            config,
+            file,
+            leases: Vec::new(),
+        };
+
+        mgr.load()?;
+        Ok(mgr)
+    }
+
+    fn load(&mut self) -> Result<()> {
+        self.file.rewind()?;
+        self.leases = serde_json::from_reader(&self.file)?;
+
+        Ok(())
+    }
+
+    fn save(&mut self) -> Result<()> {
+        self.file.rewind()?;
+        self.file.set_len(0)?;
+
+        serde_json::to_writer_pretty(&self.file, &self.leases)?;
+        Ok(())
+    }
+
+    fn garbage_collect(&mut self) -> Result<()> {
+        self.leases = self
+            .leases
+            .clone()
+            .into_iter()
+            .filter(|lease| SystemTime::now().duration_since(lease.expires).is_err())
+            .collect();
+
+        self.save()?;
+        Ok(())
+    }
+}
+
+impl LeaseManager for LeaseFileManager {
+    fn range(&self) -> (Ipv4Addr, Ipv4Addr) {
+        self.config.range
+    }
+
+    fn netmask(&self) -> Ipv4Addr {
+        self.config.netmask
+    }
+
+    fn lease_time(&self) -> Duration {
+        self.config.lease_time
+    }
+
+    fn leases(&self) -> Box<dyn Iterator<Item = Lease>> {
+        Box::new(
+            self.leases
+                .clone()
+                .into_iter()
+                .filter(|lease| SystemTime::now().duration_since(lease.expires).is_err()),
+        )
+    }
+
+    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool> {
+        self.garbage_collect()?;
+
+        if self.is_unavailable(address, client_id) {
+            Ok(false)
+        } else {
+            let lease = self
+                .leases
+                .iter()
+                .enumerate()
+                .find(|(_, lease)| lease.client_id == client_id);
+
+            if let Some(lease) = lease {
+                self.leases.remove(lease.0);
+            }
+
+            self.leases
+                .push(Lease::new(address, self.lease_time(), client_id.to_vec()));
+
+            self.save()?;
+            Ok(true)
+        }
+    }
+
+    fn release(&mut self, client_id: &[u8]) -> Result<Box<dyn Iterator<Item = Ipv4Addr>>> {
+        self.garbage_collect()?;
+
+        let mut released = Vec::new();
+
+        self.leases
+            .clone()
+            .into_iter()
+            .enumerate()
+            .filter(|(_, lease)| lease.client_id == client_id)
+            .for_each(|(i, lease)| {
+                self.leases.remove(i);
+                released.push(lease.address);
+            });
+
+        self.save()?;
+        Ok(Box::new(released.into_iter()))
     }
 }

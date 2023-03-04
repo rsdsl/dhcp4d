@@ -1,18 +1,36 @@
 use dhcp4d::error::{Error, Result};
-use dhcp4d::lease::{LeaseDummyManager, LeaseManager};
+use dhcp4d::lease::{LeaseFileManager, LeaseFileManagerConfig, LeaseManager};
 use dhcp4d::util::{format_client_id, local_ip};
 
+use std::fs::OpenOptions;
 use std::mem::MaybeUninit;
 use std::net::{IpAddr, SocketAddr, SocketAddrV4};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
 
 fn main() -> Result<()> {
-    let lease_mgr = Arc::new(Mutex::new(LeaseDummyManager::new(None)));
+    let config = LeaseFileManagerConfig {
+        range: (
+            "198.51.100.100".parse().unwrap(),
+            "198.51.100.249".parse().unwrap(),
+        ),
+        netmask: "255.255.255.0".parse().unwrap(),
+        lease_time: Duration::from_secs(300),
+    };
+
+    let file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open("leases.json")?;
+
+    let lease_mgr = Arc::new(Mutex::new(LeaseFileManager::new(config, file)?));
 
     let mut threads = Vec::new();
     for arg in std::env::args().skip(1) {
@@ -27,7 +45,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run(link: String, lease_mgr: Arc<Mutex<LeaseDummyManager>>) -> Result<()> {
+fn run<T: LeaseManager>(link: String, lease_mgr: Arc<Mutex<T>>) -> Result<()> {
     let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
 
     let addresses = linkaddrs::ipv4_addresses(link)?;
@@ -56,9 +74,9 @@ fn run(link: String, lease_mgr: Arc<Mutex<LeaseDummyManager>>) -> Result<()> {
     }
 }
 
-fn handle_request(
+fn handle_request<T: LeaseManager>(
     sock: &Socket,
-    lease_mgr: Arc<Mutex<LeaseDummyManager>>,
+    lease_mgr: Arc<Mutex<T>>,
     buf: &[u8],
     remote: SocketAddrV4,
 ) -> Result<()> {
@@ -144,7 +162,7 @@ fn handle_request(
                         _ => unreachable!(),
                     };
 
-                    if !lease_mgr.request(*requested_addr, client_id) {
+                    if !lease_mgr.request(*requested_addr, client_id)? {
                         let own_addr = local_ip(sock);
 
                         let mut resp = Message::default();
@@ -225,7 +243,7 @@ fn handle_request(
 
                     let mut lease_mgr = lease_mgr.lock().unwrap();
                     let released: Vec<String> = lease_mgr
-                        .release(client_id)
+                        .release(client_id)?
                         .map(|addr| addr.to_string())
                         .collect();
 
