@@ -2,6 +2,7 @@ use dhcp4d::lease::{Lease, LeaseDummyManager, LeaseManager};
 
 use std::mem::MaybeUninit;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use anyhow::{anyhow, bail};
@@ -10,10 +11,12 @@ use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
 
 fn main() -> anyhow::Result<()> {
-    let mut threads = Vec::new();
+    let lease_mgr = Arc::new(Mutex::new(LeaseDummyManager::new(None)));
 
+    let mut threads = Vec::new();
     for arg in std::env::args().skip(1) {
-        threads.push(thread::spawn(|| run(arg)));
+        let cloned_mgr = Arc::clone(&lease_mgr);
+        threads.push(thread::spawn(|| run(arg, cloned_mgr)));
     }
 
     for handle in threads {
@@ -23,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn run(link: String) -> anyhow::Result<()> {
+fn run(link: String, lease_mgr: Arc<Mutex<LeaseDummyManager>>) -> anyhow::Result<()> {
     let sock = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
 
     let addresses = linkaddrs::ipv4_addresses(link)?;
@@ -45,16 +48,19 @@ fn run(link: String) -> anyhow::Result<()> {
 
         let remote = remote.as_socket_ipv4().unwrap();
 
-        match handle_request(&sock, buf, remote) {
+        match handle_request(&sock, lease_mgr.clone(), buf, remote) {
             Ok(_) => {}
             Err(e) => eprintln!("erroneous request from {}: {}", remote, e),
         }
     }
 }
 
-fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Result<()> {
-    let mut lease_mgr = LeaseDummyManager::new(None);
-
+fn handle_request(
+    sock: &Socket,
+    lease_mgr: Arc<Mutex<LeaseDummyManager>>,
+    buf: &[u8],
+    remote: SocketAddrV4,
+) -> anyhow::Result<()> {
     let msg = Message::decode(&mut Decoder::new(buf))?;
 
     let op = msg.opcode();
@@ -75,10 +81,11 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                         _ => bail!("expected ClientIdentifier"),
                     };
 
-                    let lease = obtain_lease(&lease_mgr, client_id)
+                    let lease = obtain_lease(lease_mgr.clone(), client_id)
                         .ok_or(anyhow!("no free addresses available"))?;
 
                     let own_addr = own_address(sock);
+                    let lease_mgr = lease_mgr.lock().unwrap();
 
                     let mut resp = Message::default();
                     let opts = resp
@@ -121,6 +128,8 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
                     }
                 }
                 MessageType::Request => {
+                    let mut lease_mgr = lease_mgr.lock().unwrap();
+
                     let requested_addr = match opts
                         .get(OptionCode::RequestedIpAddress)
                         .ok_or(anyhow!("no address requested"))?
@@ -172,8 +181,8 @@ fn handle_request(sock: &Socket, buf: &[u8], remote: SocketAddrV4) -> anyhow::Re
     }
 }
 
-fn obtain_lease<T: LeaseManager>(lease_mgr: &T, client_id: &[u8]) -> Option<Lease> {
-    lease_mgr.persistent_free_address(client_id)
+fn obtain_lease<T: LeaseManager>(lease_mgr: Arc<Mutex<T>>, client_id: &[u8]) -> Option<Lease> {
+    lease_mgr.lock().unwrap().persistent_free_address(client_id)
 }
 
 fn own_address(sock: &Socket) -> Ipv4Addr {
