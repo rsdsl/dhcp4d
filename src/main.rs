@@ -71,7 +71,7 @@ fn run<T: LeaseManager>(link: String, lease_mgr: Arc<Mutex<T>>) -> Result<()> {
 
     // Bind socket to interface.
     unsafe {
-        let link_index = libc::if_nametoindex(CString::new(link)?.into_raw());
+        let link_index = libc::if_nametoindex(CString::new(link.clone())?.into_raw());
 
         setsockopt(
             sock.as_raw_fd(),
@@ -92,9 +92,9 @@ fn run<T: LeaseManager>(link: String, lease_mgr: Arc<Mutex<T>>) -> Result<()> {
 
         let remote = remote.as_socket_ipv4().unwrap();
 
-        match handle_request(&sock, lease_mgr.clone(), buf, remote) {
+        match handle_request(&sock, lease_mgr.clone(), buf, remote, &link) {
             Ok(_) => {}
-            Err(e) => eprintln!("erroneous request from {}: {}", remote, e),
+            Err(e) => eprintln!("erroneous request from {} on {}: {}", remote, link, e),
         }
     }
 }
@@ -104,6 +104,7 @@ fn handle_request<T: LeaseManager>(
     lease_mgr: Arc<Mutex<T>>,
     buf: &[u8],
     remote: SocketAddrV4,
+    link: &str,
 ) -> Result<()> {
     let msg = Message::decode(&mut Decoder::new(buf))?;
 
@@ -159,10 +160,11 @@ fn handle_request<T: LeaseManager>(
                         Err(Error::PartialResponse)
                     } else {
                         println!(
-                            "offering {} to client ID {} for {:?}",
+                            "offering {} to client ID {} for {:?} on {}",
                             lease.address,
                             format_client_id(client_id)?,
-                            lease.lease_time
+                            lease.lease_time,
+                            link
                         );
 
                         Ok(())
@@ -211,9 +213,10 @@ fn handle_request<T: LeaseManager>(
                             Err(Error::PartialResponse)
                         } else {
                             println!(
-                                "not ackknowledging {} for client ID {}",
+                                "not ackknowledging {} for client ID {} on {}",
                                 requested_addr,
-                                format_client_id(client_id)?
+                                format_client_id(client_id)?,
+                                link
                             );
 
                             Ok(())
@@ -247,10 +250,11 @@ fn handle_request<T: LeaseManager>(
                             Err(Error::PartialResponse)
                         } else {
                             println!(
-                                "ackknowledging {} for client ID {} for {:?}",
+                                "ackknowledging {} for client ID {} for {:?} on {}",
                                 requested_addr,
                                 format_client_id(client_id)?,
-                                lease_time
+                                lease_time,
+                                link
                             );
 
                             Ok(())
@@ -275,9 +279,10 @@ fn handle_request<T: LeaseManager>(
                     let released_pretty = released.join(", ");
 
                     println!(
-                        "releasing {} for client ID {}",
+                        "releasing {} for client ID {} on {}",
                         released_pretty,
-                        format_client_id(client_id)?
+                        format_client_id(client_id)?,
+                        link
                     );
                     Ok(())
                 }
