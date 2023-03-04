@@ -28,6 +28,7 @@ pub trait LeaseManager {
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
     fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> bool;
     fn lease_time(&self) -> Duration;
+    fn release(&mut self, client_id: &[u8]) -> Box<dyn Iterator<Item = Ipv4Addr>>;
 
     fn all_addresses(&self) -> Vec<Ipv4Addr> {
         let range = self.range();
@@ -168,5 +169,21 @@ impl LeaseManager for LeaseDummyManager {
 
     fn lease_time(&self) -> Duration {
         Duration::from_secs(300)
+    }
+
+    fn release(&mut self, client_id: &[u8]) -> Box<dyn Iterator<Item = Ipv4Addr>> {
+        let mut released = Vec::new();
+
+        self.leases
+            .clone()
+            .into_iter()
+            .enumerate()
+            .filter(|(_, lease)| lease.client_id == client_id)
+            .for_each(|(i, lease)| {
+                self.leases.remove(i);
+                released.push(lease.address);
+            });
+
+        Box::new(released.into_iter())
     }
 }

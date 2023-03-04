@@ -225,6 +225,32 @@ fn handle_request(
                         }
                     }
                 }
+                MessageType::Release => {
+                    let client_id = match opts
+                        .get(OptionCode::ClientIdentifier)
+                        .ok_or(anyhow!("no client id"))?
+                    {
+                        DhcpOption::ClientIdentifier(id) => id,
+                        _ => bail!("expected ClientIdentifier"),
+                    };
+
+                    let mut lease_mgr = lease_mgr.lock().unwrap();
+                    let released: Vec<String> = lease_mgr
+                        .release(client_id)
+                        .map(|addr| addr.to_string())
+                        .collect();
+
+                    let released_pretty = released.join(", ");
+
+                    let cid = client_id
+                        .iter()
+                        .map(|octet| format!("{:x}", octet))
+                        .reduce(|acc, octet| acc + &octet)
+                        .ok_or(anyhow!("zero-length client id"))?;
+
+                    println!("releasing {} for client ID {}", released_pretty, cid);
+                    Ok(())
+                }
                 _ => Err(anyhow!("invalid message type {:?}", msg_type,)),
             }
         }
