@@ -56,22 +56,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23d8666cb01533c39dde32bcbab8e227b4ed6679b2c925eba05feabea39508fb"
 
 [[package]]
-name = "dhcp4d"
-version = "0.1.0"
-dependencies = [
- "dhcproto",
- "ipnet",
- "libc",
- "linkaddrs",
- "rand",
- "serde",
- "serde_derive",
- "serde_json",
- "socket2 0.5.1",
- "thiserror",
-]
-
-[[package]]
 name = "dhcproto"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -479,6 +463,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "rsdsl_dhcp4d"
+version = "0.1.0"
+dependencies = [
+ "dhcproto",
+ "ipnet",
+ "libc",
+ "linkaddrs",
+ "rand",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "socket2 0.5.1",
+ "thiserror",
 ]
 
 [[package]]

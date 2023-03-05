@@ -1,5 +1,5 @@
 [package]
-name = "dhcp4d"
+name = "rsdsl_dhcp4d"
 version = "0.1.0"
 edition = "2021"
 

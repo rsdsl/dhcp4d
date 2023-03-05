@@ -1,6 +1,6 @@
-use dhcp4d::error::{Error, Result};
-use dhcp4d::lease::{LeaseFileManager, LeaseFileManagerConfig, LeaseManager};
-use dhcp4d::util::{format_client_id, local_ip, setsockopt};
+use rsdsl_dhcp4d::error::{Error, Result};
+use rsdsl_dhcp4d::lease::{LeaseFileManager, LeaseFileManagerConfig, LeaseManager};
+use rsdsl_dhcp4d::util::{format_client_id, local_ip, setsockopt};
 
 use std::ffi::CString;
 use std::fs::{self, OpenOptions};
