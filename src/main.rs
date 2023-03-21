@@ -10,7 +10,6 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::os::fd::AsRawFd;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::Duration;
 
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
@@ -18,15 +17,7 @@ use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
 
 fn main() -> Result<()> {
-    let mut threads = Vec::new();
-    for (i, arg) in std::env::args().skip(1).enumerate() {
-        threads.push(thread::spawn(move || run(arg, i as u8)));
-    }
-
-    for handle in threads {
-        handle.join().unwrap()?;
-    }
-
+    run("eth0".into(), 0)?;
     Ok(())
 }
 
