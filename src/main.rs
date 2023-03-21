@@ -31,7 +31,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
         lease_time: Duration::from_secs(43200),
     };
 
-    let lease_file = format!("leases_{}.json", link);
+    let lease_file = format!("/data/dhcp4d.leases_{}", link);
 
     if fs::metadata(&lease_file).is_err() {
         let mut file = OpenOptions::new()
