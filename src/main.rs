@@ -24,8 +24,8 @@ fn main() -> Result<()> {
 fn run(link: String, subnet_id: u8) -> Result<()> {
     let config = LeaseFileManagerConfig {
         range: (
-            Ipv4Addr::new(10, 42, subnet_id, 100),
-            Ipv4Addr::new(10, 42, subnet_id, 239),
+            Ipv4Addr::new(10, 128, subnet_id, 100),
+            Ipv4Addr::new(10, 128, subnet_id, 239),
         ),
         netmask: Ipv4Addr::new(255, 255, 255, 0),
         lease_time: Duration::from_secs(43200),
