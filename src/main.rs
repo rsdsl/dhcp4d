@@ -16,6 +16,8 @@ use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use socket2::{Domain, Socket, Type};
 
+const BUFSIZE: usize = 1500;
+
 fn main() -> Result<()> {
     run("eth0".into(), 0)?;
     Ok(())
@@ -77,7 +79,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
     sock.bind(&address.into())?;
 
     loop {
-        let mut buf = [MaybeUninit::new(0); 1024];
+        let mut buf = [MaybeUninit::new(0); BUFSIZE];
         let (n, remote) = sock.recv_from(&mut buf)?;
         let buf = &buf
             .iter()
