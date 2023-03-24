@@ -7,23 +7,23 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("no IPv4 address assigned to interface {0}")]
+    #[error("no ipv4 addr on interface {0}")]
     NoIpv4Addr(String),
-    #[error("client sent unhandled or unknown opcode {0:?}")]
+    #[error("unhandled or unknown opcode {0:?}")]
     InvalidOpcode(Opcode),
-    #[error("client did not send a message type")]
+    #[error("missing message type")]
     NoMsgType,
-    #[error("client sent unhandled or unknown message type {0:?}")]
+    #[error("unhandled or unknown message type {0:?}")]
     InvalidMsgType(MessageType),
-    #[error("client did not send a client id")]
+    #[error("missing client id")]
     NoClientId,
-    #[error("client sent an empty client id")]
+    #[error("empty client id")]
     EmptyClientId,
-    #[error("client did not include an IP address in DHCPREQUEST")]
+    #[error("missing ip address in dhcprequest")]
     NoAddrRequested,
-    #[error("address pool exhausted")]
+    #[error("addr pool exhausted")]
     PoolExhausted,
-    #[error("bytes transmitted is not equal to response size")]
+    #[error("bytes sent not equal to pkt size")]
     PartialResponse,
     #[error("dhcproto encode error")]
     DhcprotoEncode(#[from] dhcproto::error::EncodeError),
@@ -35,7 +35,7 @@ pub enum Error {
     LinkAddrs(#[from] linkaddrs::Error),
     #[error("serde_json error")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("error parsing IP address")]
+    #[error("ip addr parse error")]
     AddrParseError(#[from] net::AddrParseError),
     #[error("ffi nul error (string contains nul bytes)")]
     FfiNulError(#[from] ffi::NulError),
