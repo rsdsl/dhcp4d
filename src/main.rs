@@ -94,7 +94,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
         match handle_request(&sock, lease_mgr.clone(), buf, &link) {
             Ok(_) => {}
             Err(e) => println!(
-                "[dhcp4d] recv bad request from {} on {}: {}",
+                "[dhcp4d] can't handle pkt from {} on {}: {}",
                 remote, link, e
             ),
         }
@@ -309,7 +309,7 @@ fn handle_request<T: LeaseManager>(
                     let released_pretty = released.join(", ");
 
                     println!(
-                        "[dhcp4d] release {} for client id {} on {}",
+                        "[dhcp4d] release {} from client id {} on {}",
                         released_pretty,
                         format_client_id(client_id)?,
                         link
