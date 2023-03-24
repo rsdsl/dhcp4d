@@ -93,7 +93,7 @@ pub trait LeaseManager {
             let offset = ((16 * attempts + cid) % all.len()) as u32;
 
             let addr = (u32::from_be_bytes(range.0.octets()) + offset).into();
-            if !self.is_taken(addr) {
+            if !self.is_unavailable(addr, client_id) {
                 return Some(Lease::new(addr, self.lease_time(), client_id.to_vec()));
             }
 
