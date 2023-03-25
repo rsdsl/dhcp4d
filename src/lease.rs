@@ -14,15 +14,22 @@ pub struct Lease {
     pub expires: SystemTime,
     pub lease_time: Duration,
     pub client_id: Vec<u8>,
+    pub hostname: Option<String>,
 }
 
 impl Lease {
-    pub fn new(address: Ipv4Addr, lease_time: Duration, client_id: Vec<u8>) -> Self {
+    pub fn new(
+        address: Ipv4Addr,
+        lease_time: Duration,
+        client_id: Vec<u8>,
+        hostname: Option<String>,
+    ) -> Self {
         Self {
             address,
             expires: SystemTime::now() + lease_time,
             lease_time,
             client_id,
+            hostname,
         }
     }
 
@@ -41,7 +48,12 @@ pub trait LeaseManager {
     fn netmask(&self) -> Ipv4Addr;
     fn lease_time(&self) -> Duration;
     fn leases(&self) -> Box<dyn Iterator<Item = Lease>>;
-    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool>;
+    fn request(
+        &mut self,
+        address: Ipv4Addr,
+        client_id: &[u8],
+        hostname: Option<String>,
+    ) -> Result<bool>;
     fn renew(&mut self, client_id: &[u8]) -> Result<Option<Ipv4Addr>>;
     fn release(&mut self, client_id: &[u8]) -> Result<Box<dyn Iterator<Item = Ipv4Addr>>>;
 
@@ -72,18 +84,18 @@ pub trait LeaseManager {
             .collect()
     }
 
-    fn any_free_address(&self, client_id: Vec<u8>) -> Option<Lease> {
+    fn any_free_address(&self, client_id: Vec<u8>, hostname: Option<String>) -> Option<Lease> {
         self.free_addresses()
             .into_iter()
             .next()
-            .map(|addr| Lease::new(addr, self.lease_time(), client_id))
+            .map(|addr| Lease::new(addr, self.lease_time(), client_id, hostname))
     }
 
     // Imperfect implementation. Lease manager implementations
     // should override the default behavior.
     // The lack of guaranteed persistence shouldn't be a concern
     // for our use case.
-    fn persistent_free_address(&self, client_id: &[u8]) -> Option<Lease> {
+    fn persistent_free_address(&self, client_id: &[u8], hostname: Option<String>) -> Option<Lease> {
         let cid = u32::from_be_bytes(client_id[..4].try_into().unwrap()) as usize;
         let all = self.all_addresses();
         let range = self.range();
@@ -94,7 +106,12 @@ pub trait LeaseManager {
 
             let addr = (u32::from_be_bytes(range.0.octets()) + offset).into();
             if !self.is_unavailable(addr, client_id) {
-                return Some(Lease::new(addr, self.lease_time(), client_id.to_vec()));
+                return Some(Lease::new(
+                    addr,
+                    self.lease_time(),
+                    client_id.to_vec(),
+                    hostname,
+                ));
             }
 
             attempts += 1;
@@ -165,7 +182,12 @@ impl LeaseManager for LeaseDummyManager {
         )
     }
 
-    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool> {
+    fn request(
+        &mut self,
+        address: Ipv4Addr,
+        client_id: &[u8],
+        hostname: Option<String>,
+    ) -> Result<bool> {
         let range = self.range();
 
         if self.is_unavailable(address, client_id)
@@ -183,8 +205,12 @@ impl LeaseManager for LeaseDummyManager {
                 self.leases.remove(lease.0);
             }
 
-            self.leases
-                .push(Lease::new(address, self.lease_time(), client_id.to_vec()));
+            self.leases.push(Lease::new(
+                address,
+                self.lease_time(),
+                client_id.to_vec(),
+                hostname,
+            ));
 
             Ok(true)
         }
@@ -298,7 +324,12 @@ impl LeaseManager for LeaseFileManager {
         )
     }
 
-    fn request(&mut self, address: Ipv4Addr, client_id: &[u8]) -> Result<bool> {
+    fn request(
+        &mut self,
+        address: Ipv4Addr,
+        client_id: &[u8],
+        hostname: Option<String>,
+    ) -> Result<bool> {
         self.garbage_collect()?;
 
         let range = self.range();
@@ -318,8 +349,12 @@ impl LeaseManager for LeaseFileManager {
                 self.leases.remove(lease.0);
             }
 
-            self.leases
-                .push(Lease::new(address, self.lease_time(), client_id.to_vec()));
+            self.leases.push(Lease::new(
+                address,
+                self.lease_time(),
+                client_id.to_vec(),
+                hostname,
+            ));
 
             self.save()?;
             Ok(true)

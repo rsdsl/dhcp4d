@@ -129,9 +129,16 @@ fn handle_request<T: LeaseManager>(
                         _ => unreachable!(),
                     };
 
+                    let hostname = opts
+                        .get(OptionCode::Hostname)
+                        .map(|hostname| match hostname {
+                            DhcpOption::Hostname(hostname) => hostname.clone(),
+                            _ => unreachable!(),
+                        });
+
                     let lease_mgr = lease_mgr.lock().unwrap();
                     let lease = lease_mgr
-                        .persistent_free_address(client_id)
+                        .persistent_free_address(client_id, hostname)
                         .ok_or(Error::PoolExhausted)?;
 
                     let own_addr = local_ip(link)?;
@@ -184,6 +191,13 @@ fn handle_request<T: LeaseManager>(
                         _ => unreachable!(),
                     };
 
+                    let hostname = opts
+                        .get(OptionCode::Hostname)
+                        .map(|hostname| match hostname {
+                            DhcpOption::Hostname(hostname) => hostname.clone(),
+                            _ => unreachable!(),
+                        });
+
                     let mut renew = false;
                     let requested_addr =
                         match opts.get(OptionCode::RequestedIpAddress).map(|v| match v {
@@ -200,7 +214,7 @@ fn handle_request<T: LeaseManager>(
                             },
                         };
 
-                    if !lease_mgr.request(requested_addr, client_id)? {
+                    if !lease_mgr.request(requested_addr, client_id, hostname)? {
                         let own_addr = local_ip(link)?;
 
                         let mut resp = Message::default();
