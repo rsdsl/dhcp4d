@@ -21,8 +21,6 @@ use socket2::{Domain, Socket, Type};
 const BUFSIZE: usize = 1500;
 
 fn main() -> Result<()> {
-    thread::spawn(|| run("eth0".into(), 0).unwrap());
-
     for i in 1..=4 {
         let subnet_id = 10 * i;
         let vlan_name = format!("eth0.{}", subnet_id);
@@ -30,6 +28,7 @@ fn main() -> Result<()> {
         thread::spawn(move || run(vlan_name, subnet_id).unwrap());
     }
 
+    run("eth0".into(), 0)?;
     Ok(())
 }
 
