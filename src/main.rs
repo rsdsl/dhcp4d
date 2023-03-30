@@ -10,20 +10,33 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::os::fd::AsRawFd;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
+use rsdsl_netlinkd::link;
 use socket2::{Domain, Socket, Type};
 
 const BUFSIZE: usize = 1500;
 
 fn main() -> Result<()> {
-    run("eth0".into(), 0)?;
+    thread::spawn(|| run("eth0".into(), 0).unwrap());
+
+    for i in 1..=4 {
+        let subnet_id = 10 * i;
+        let vlan_name = format!("eth0.{}", subnet_id);
+
+        thread::spawn(move || run(vlan_name, subnet_id).unwrap());
+    }
+
     Ok(())
 }
 
 fn run(link: String, subnet_id: u8) -> Result<()> {
+    println!("[dhcp4d] wait for interface {}", link);
+    link::wait(link.clone())?;
+
     println!("[dhcp4d] init interface {}", link);
 
     let config = LeaseFileManagerConfig {

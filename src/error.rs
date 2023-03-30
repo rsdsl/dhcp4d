@@ -33,6 +33,8 @@ pub enum Error {
     Io(#[from] io::Error),
     #[error("linkaddrs error")]
     LinkAddrs(#[from] linkaddrs::Error),
+    #[error("rsdsl_netlinkd error")]
+    RsdslNetlinkd(#[from] rsdsl_netlinkd::error::Error),
     #[error("serde_json error")]
     SerdeJson(#[from] serde_json::Error),
     #[error("ip addr parse error")]
