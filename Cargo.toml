@@ -19,6 +19,3 @@ serde_derive = "1.0"
 serde_json = "1.0"
 socket2 = { version = "0.5.1", features = ["all"] }
 thiserror = "1.0"
-
-[patch.crates-io]
-libc = { git = 'https://github.com/rust-lang/libc.git', rev = "e71a4c0b1fd40050f50844e2a752576bcb6b5edb" }
