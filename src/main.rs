@@ -33,10 +33,10 @@ fn main() -> Result<()> {
 }
 
 fn run(link: String, subnet_id: u8) -> Result<()> {
-    println!("[dhcp4d] wait for interface {}", link);
-    link::wait(link.clone())?;
+    println!("[dhcp4d] wait for up {}", link);
+    link::wait_up(link.clone())?;
 
-    println!("[dhcp4d] init interface {}", link);
+    println!("[dhcp4d] init {}", link);
 
     let config = LeaseFileManagerConfig {
         range: (
