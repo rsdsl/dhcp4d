@@ -173,6 +173,7 @@ fn handle_request<T: LeaseManager>(
                     ));
                     opts.insert(DhcpOption::ServerIdentifier(own_addr));
                     opts.insert(DhcpOption::DomainNameServer(vec![own_addr]));
+                    opts.insert(DhcpOption::InterfaceMtu(1492));
 
                     let mut resp_buf = Vec::new();
                     resp.encode(&mut Encoder::new(&mut resp_buf))?;
@@ -287,6 +288,7 @@ fn handle_request<T: LeaseManager>(
                         opts.insert(DhcpOption::AddressLeaseTime(lease_time.as_secs() as u32));
                         opts.insert(DhcpOption::ServerIdentifier(own_addr));
                         opts.insert(DhcpOption::DomainNameServer(vec![own_addr]));
+                        opts.insert(DhcpOption::InterfaceMtu(1492));
 
                         let mut resp_buf = Vec::new();
                         resp.encode(&mut Encoder::new(&mut resp_buf))?;
