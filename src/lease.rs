@@ -270,7 +270,19 @@ impl LeaseFileManager {
             leases: Vec::new(),
         };
 
-        mgr.load()?;
+        match mgr.load() {
+            Ok(_) => {}
+            Err(e) => {
+                println!(
+                    "[dhcp4d] reset broken lease file for subnet {}: {}",
+                    mgr.config.range.0.octets()[2],
+                    e
+                );
+
+                mgr.save()?;
+            }
+        }
+
         Ok(mgr)
     }
 
