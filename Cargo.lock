@@ -652,8 +652,8 @@ dependencies = [
 
 [[package]]
 name = "rsdsl_netlinkd"
-version = "0.1.1"
-source = "git+https://github.com/rsdsl/netlinkd.git#7801ce57a992e101237f80dafdfec97a53333813"
+version = "0.2.0"
+source = "git+https://github.com/rsdsl/netlinkd.git#dd053bc60bba68c8754905c3968d16fb9ba98514"
 dependencies = [
  "futures-util",
  "netlink-packet-route 0.15.0",
