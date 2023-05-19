@@ -302,6 +302,8 @@ impl LeaseFileManager {
     }
 
     fn garbage_collect(&mut self) -> Result<()> {
+        self.load()?;
+
         self.leases = self
             .leases
             .clone()
