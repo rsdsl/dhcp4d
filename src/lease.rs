@@ -270,7 +270,18 @@ impl LeaseFileManager {
             leases: Vec::new(),
         };
 
-        match mgr.load() {
+        Ok(mgr)
+    }
+
+    fn load_wrapped(&mut self) -> Result<()> {
+        self.file.rewind()?;
+        self.leases = serde_json::from_reader(&self.file)?;
+
+        Ok(())
+    }
+
+    fn load(&mut self) -> Result<()> {
+        match self.load_wrapped() {
             Ok(_) => {}
             Err(e) => {
                 println!(
@@ -282,15 +293,6 @@ impl LeaseFileManager {
                 mgr.save()?;
             }
         }
-
-        Ok(mgr)
-    }
-
-    fn load(&mut self) -> Result<()> {
-        self.file.rewind()?;
-        self.leases = serde_json::from_reader(&self.file)?;
-
-        Ok(())
     }
 
     fn save(&mut self) -> Result<()> {
