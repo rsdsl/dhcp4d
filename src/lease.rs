@@ -264,7 +264,7 @@ pub struct LeaseFileManager {
 
 impl LeaseFileManager {
     pub fn new(config: LeaseFileManagerConfig, file: File) -> Result<Self> {
-        let mut mgr = Self {
+        let mgr = Self {
             config,
             file,
             leases: Vec::new(),
@@ -286,13 +286,15 @@ impl LeaseFileManager {
             Err(e) => {
                 println!(
                     "[dhcp4d] reset broken lease file for subnet {}: {}",
-                    mgr.config.range.0.octets()[2],
+                    self.config.range.0.octets()[2],
                     e
                 );
 
-                mgr.save()?;
+                self.save()?;
             }
         }
+
+        Ok(())
     }
 
     fn save(&mut self) -> Result<()> {
