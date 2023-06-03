@@ -33,10 +33,10 @@ fn main() -> Result<()> {
 }
 
 fn run(link: String, subnet_id: u8) -> Result<()> {
-    println!("[dhcp4d] wait for up {}", link);
+    println!("wait for up {}", link);
     link::wait_up(link.clone())?;
 
-    println!("[dhcp4d] init {}", link);
+    println!("init {}", link);
 
     let config = LeaseFileManagerConfig {
         range: (
@@ -105,10 +105,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
 
         match handle_request(&sock, lease_mgr.clone(), buf, &link) {
             Ok(_) => {}
-            Err(e) => println!(
-                "[dhcp4d] can't handle pkt from {} on {}: {}",
-                remote, link, e
-            ),
+            Err(e) => println!("can't handle pkt from {} on {}: {}", remote, link, e),
         }
     }
 }
@@ -182,7 +179,7 @@ fn handle_request<T: LeaseManager>(
                         Err(Error::PartialResponse)
                     } else {
                         println!(
-                            "[dhcp4d] offer {} to client id {} for {:?} on {}",
+                            "offer {} to client id {} for {:?} on {}",
                             lease.address,
                             format_client_id(client_id)?,
                             lease.lease_time,
@@ -251,14 +248,14 @@ fn handle_request<T: LeaseManager>(
                         } else {
                             if renew {
                                 println!(
-                                    "[dhcp4d] nak {} (renew) for client id {} on {}",
+                                    "nak {} (renew) for client id {} on {}",
                                     requested_addr,
                                     format_client_id(client_id)?,
                                     link
                                 );
                             } else {
                                 println!(
-                                    "[dhcp4d] nak {} for client id {} on {}",
+                                    "nak {} for client id {} on {}",
                                     requested_addr,
                                     format_client_id(client_id)?,
                                     link
@@ -297,7 +294,7 @@ fn handle_request<T: LeaseManager>(
                         } else {
                             if renew {
                                 println!(
-                                    "[dhcp4d] ack {} (renew) for client id {} for {:?} on {}",
+                                    "ack {} (renew) for client id {} for {:?} on {}",
                                     requested_addr,
                                     format_client_id(client_id)?,
                                     lease_time,
@@ -305,7 +302,7 @@ fn handle_request<T: LeaseManager>(
                                 );
                             } else {
                                 println!(
-                                    "[dhcp4d] ack {} for client id {} for {:?} on {}",
+                                    "ack {} for client id {} for {:?} on {}",
                                     requested_addr,
                                     format_client_id(client_id)?,
                                     lease_time,
@@ -335,7 +332,7 @@ fn handle_request<T: LeaseManager>(
                     let released_pretty = released.join(", ");
 
                     println!(
-                        "[dhcp4d] release {} from client id {} on {}",
+                        "release {} from client id {} on {}",
                         released_pretty,
                         format_client_id(client_id)?,
                         link

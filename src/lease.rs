@@ -285,7 +285,7 @@ impl LeaseFileManager {
             Ok(_) => {}
             Err(e) => {
                 println!(
-                    "[dhcp4d] reset broken lease file for subnet {}: {}",
+                    "reset broken lease file for subnet {}: {}",
                     self.config.range.0.octets()[2],
                     e
                 );
