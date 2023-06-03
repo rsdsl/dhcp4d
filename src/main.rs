@@ -29,7 +29,10 @@ fn main() -> Result<()> {
     }
 
     run("eth0".into(), 0)?;
-    Ok(())
+
+    loop {
+        thread::sleep(Duration::MAX);
+    }
 }
 
 fn run(link: String, subnet_id: u8) -> Result<()> {
