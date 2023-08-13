@@ -13,7 +13,7 @@ ipnet = "2.7.1"
 libc = "0.2"
 linkaddrs = { git = "https://github.com/HimbeerserverDE/linkaddrs.git", version = "0.1.0" }
 rand = "0.8.5"
-rsdsl_netlinkd = { git = "https://github.com/rsdsl/netlinkd.git", version = "0.4.0" }
+rsdsl_netlinkd = { git = "https://github.com/rsdsl/netlinkd.git", version = "0.5.0" }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
