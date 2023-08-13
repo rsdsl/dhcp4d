@@ -645,25 +645,35 @@ dependencies = [
 
 [[package]]
 name = "rsdsl_ip_config"
-version = "0.2.1"
-source = "git+https://github.com/rsdsl/ip_config.git#26c15096a1f4b69c6c06b5373b507c9dbbfc54c5"
+version = "0.2.2"
+source = "git+https://github.com/rsdsl/ip_config.git#3239a5eeef22de4c50d4d00a9f51bebb5207633c"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "rsdsl_netlinkd"
-version = "0.5.0"
-source = "git+https://github.com/rsdsl/netlinkd.git#644023c680db2346c3144e7218d9ece7402e65b5"
+version = "0.6.0"
+source = "git+https://github.com/rsdsl/netlinkd.git#72f04e3494b4f3ba810274447235e9051f5e1749"
 dependencies = [
  "futures-util",
+ "ipnet",
  "netlink-packet-route",
  "notify",
  "rsdsl_ip_config",
+ "rsdsl_pd_config",
  "rtnetlink",
  "serde_json",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "rsdsl_pd_config"
+version = "0.1.0"
+source = "git+https://github.com/rsdsl/pd_config.git#98ee1876a08a1c3844d0b439a8ba52e5b3423810"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
