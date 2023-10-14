@@ -1,6 +1,4 @@
-use std::ffi;
-use std::io;
-use std::net;
+use std::{ffi, io, net};
 
 use dhcproto::v4::{MessageType, Opcode};
 use thiserror::Error;
