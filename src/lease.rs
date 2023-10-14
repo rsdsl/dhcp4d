@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::Result;
 
 use std::fs::File;
 use std::io::Seek;
