@@ -17,6 +17,7 @@ use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
 use rsdsl_netlinkd::link;
 use socket2::{Domain, Socket, Type};
+use sysinfo::{ProcessExt, Signal, System, SystemExt};
 
 const BUFSIZE: usize = 1500;
 
@@ -252,25 +253,21 @@ fn handle_request<T: LeaseManager>(
 
                         let n = sock.send_to(&resp_buf, &dst.into())?;
                         if n != resp_buf.len() {
-                            Err(Error::PartialResponse)
+                            return Err(Error::PartialResponse);
+                        } else if renew {
+                            println!(
+                                "nak {} (renew) for client id {} on {}",
+                                requested_addr,
+                                format_client_id(client_id)?,
+                                link
+                            );
                         } else {
-                            if renew {
-                                println!(
-                                    "nak {} (renew) for client id {} on {}",
-                                    requested_addr,
-                                    format_client_id(client_id)?,
-                                    link
-                                );
-                            } else {
-                                println!(
-                                    "nak {} for client id {} on {}",
-                                    requested_addr,
-                                    format_client_id(client_id)?,
-                                    link
-                                );
-                            }
-
-                            Ok(())
+                            println!(
+                                "nak {} for client id {} on {}",
+                                requested_addr,
+                                format_client_id(client_id)?,
+                                link
+                            );
                         }
                     } else {
                         let lease_time = lease_mgr.lease_time();
@@ -298,29 +295,31 @@ fn handle_request<T: LeaseManager>(
 
                         let n = sock.send_to(&resp_buf, &dst.into())?;
                         if n != resp_buf.len() {
-                            Err(Error::PartialResponse)
+                            return Err(Error::PartialResponse);
+                        } else if renew {
+                            println!(
+                                "ack {} (renew) for client id {} for {:?} on {}",
+                                requested_addr,
+                                format_client_id(client_id)?,
+                                lease_time,
+                                link
+                            );
                         } else {
-                            if renew {
-                                println!(
-                                    "ack {} (renew) for client id {} for {:?} on {}",
-                                    requested_addr,
-                                    format_client_id(client_id)?,
-                                    lease_time,
-                                    link
-                                );
-                            } else {
-                                println!(
-                                    "ack {} for client id {} for {:?} on {}",
-                                    requested_addr,
-                                    format_client_id(client_id)?,
-                                    lease_time,
-                                    link
-                                );
-                            }
-
-                            Ok(())
+                            println!(
+                                "ack {} for client id {} for {:?} on {}",
+                                requested_addr,
+                                format_client_id(client_id)?,
+                                lease_time,
+                                link
+                            );
                         }
                     }
+
+                    for dnsd in System::default().processes_by_exact_name("/bin/rsdsl_dnsd") {
+                        dnsd.kill_with(Signal::User1);
+                    }
+
+                    Ok(())
                 }
                 MessageType::Release => {
                     let client_id = match opts
