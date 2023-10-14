@@ -42,10 +42,10 @@ fn run_supervised(link: String, subnet_id: u8) -> ! {
 }
 
 fn run(link: String, subnet_id: u8) -> Result<()> {
-    println!("wait for up {}", link);
+    println!("[info] wait for up {}", link);
     link::wait_up(link.clone())?;
 
-    println!("init {}", link);
+    println!("[info] init {}", link);
 
     let config = LeaseFileManagerConfig {
         range: (
@@ -114,7 +114,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
 
         match handle_request(&sock, lease_mgr.clone(), buf, &link) {
             Ok(_) => {}
-            Err(e) => println!("can't handle pkt from {} on {}: {}", remote, link, e),
+            Err(e) => println!("[info] pkt from {} on {}: {}", remote, link, e),
         }
     }
 }
@@ -188,7 +188,7 @@ fn handle_request<T: LeaseManager>(
                         Err(Error::PartialResponse)
                     } else {
                         println!(
-                            "offer {} to client id {} for {:?} on {}",
+                            "[info] offer {} client id {} lease time {:?} on {}",
                             lease.address,
                             format_client_id(client_id)?,
                             lease.lease_time,
@@ -256,14 +256,14 @@ fn handle_request<T: LeaseManager>(
                             return Err(Error::PartialResponse);
                         } else if renew {
                             println!(
-                                "nak {} (renew) for client id {} on {}",
+                                "[info] nak {} client id {} on {} (renew)",
                                 requested_addr,
                                 format_client_id(client_id)?,
                                 link
                             );
                         } else {
                             println!(
-                                "nak {} for client id {} on {}",
+                                "[info] nak {} client id {} on {}",
                                 requested_addr,
                                 format_client_id(client_id)?,
                                 link
@@ -298,7 +298,7 @@ fn handle_request<T: LeaseManager>(
                             return Err(Error::PartialResponse);
                         } else if renew {
                             println!(
-                                "ack {} (renew) for client id {} for {:?} on {}",
+                                "[info] ack {} client id {} lease time {:?} on {} (renew)",
                                 requested_addr,
                                 format_client_id(client_id)?,
                                 lease_time,
@@ -306,7 +306,7 @@ fn handle_request<T: LeaseManager>(
                             );
                         } else {
                             println!(
-                                "ack {} for client id {} for {:?} on {}",
+                                "[info] ack {} client id {} lease time {:?} on {}",
                                 requested_addr,
                                 format_client_id(client_id)?,
                                 lease_time,
@@ -339,7 +339,7 @@ fn handle_request<T: LeaseManager>(
                     let released_pretty = released.join(", ");
 
                     println!(
-                        "release {} from client id {} on {}",
+                        "[info] release {} client id {} on {}",
                         released_pretty,
                         format_client_id(client_id)?,
                         link
