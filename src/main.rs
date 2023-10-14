@@ -25,13 +25,18 @@ fn main() -> Result<()> {
         let subnet_id = 10 * i;
         let vlan_name = format!("eth0.{}", subnet_id);
 
-        thread::spawn(move || run(vlan_name, subnet_id).unwrap());
+        thread::spawn(move || run_supervised(vlan_name, subnet_id));
     }
 
-    run("eth0".into(), 0)?;
+    run_supervised("eth0".into(), 0);
+}
 
+fn run_supervised(link: String, subnet_id: u8) -> ! {
     loop {
-        thread::sleep(Duration::MAX);
+        match run(link.clone(), subnet_id) {
+            Ok(_) => {}
+            Err(e) => println!("[warn] error on {}: {}", link, e),
+        }
     }
 }
 
