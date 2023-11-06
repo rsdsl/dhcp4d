@@ -38,7 +38,7 @@ pub enum Error {
     #[error("linkaddrs error")]
     LinkAddrs(#[from] linkaddrs::Error),
     #[error("rsdsl_netlinkd error")]
-    RsdslNetlinkd(#[from] rsdsl_netlinkd::error::Error),
+    RsdslNetlinkd(#[from] rsdsl_netlinkd::Error),
     #[error("serde_json error")]
     SerdeJson(#[from] serde_json::Error),
 }
