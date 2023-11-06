@@ -315,7 +315,7 @@ fn handle_request<T: LeaseManager>(
                         }
                     }
 
-                    for dnsd in System::default().processes_by_exact_name("/bin/rsdsl_dnsd") {
+                    for dnsd in System::new_all().processes_by_exact_name("rsdsl_dnsd") {
                         dnsd.kill_with(Signal::User1);
                     }
 
