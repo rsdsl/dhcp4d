@@ -15,31 +15,31 @@ pub enum Error {
     NoAddrRequested,
     #[error("missing client id")]
     NoClientId,
-    #[error("no ipv4 addr on interface {0}")]
+    #[error("no ipv4 address on interface {0}")]
     NoIpv4Addr(String),
     #[error("missing message type")]
     NoMsgType,
-    #[error("bytes sent not equal to pkt size")]
-    PartialResponse,
-    #[error("addr pool exhausted")]
+    #[error("failed to send whole packet (expected {0}, got {1})")]
+    PartialSend(usize, usize),
+    #[error("address pool exhausted")]
     PoolExhausted,
 
-    #[error("ip addr parse error")]
+    #[error("can't parse network address: {0}")]
     AddrParseError(#[from] net::AddrParseError),
-    #[error("ffi nul error (string contains nul bytes)")]
-    FfiNulError(#[from] ffi::NulError),
-    #[error("io error")]
+    #[error("string contains nul bytes: {0}")]
+    Nul(#[from] ffi::NulError),
+    #[error("io error: {0}")]
     Io(#[from] io::Error),
 
-    #[error("dhcproto decode error")]
+    #[error("dhcproto decode error: {0}")]
     DhcprotoDecode(#[from] dhcproto::error::DecodeError),
-    #[error("dhcproto encode error")]
+    #[error("dhcproto encode error: {0}")]
     DhcprotoEncode(#[from] dhcproto::error::EncodeError),
-    #[error("linkaddrs error")]
+    #[error("linkaddrs error: {0}")]
     LinkAddrs(#[from] linkaddrs::Error),
     #[error("netlinklib error: {0}")]
     Netlinklib(#[from] rsdsl_netlinklib::Error),
-    #[error("serde_json error")]
+    #[error("serde_json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }
 

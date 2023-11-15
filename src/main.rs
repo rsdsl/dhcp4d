@@ -185,7 +185,7 @@ fn handle_request<T: LeaseManager>(
 
                     let n = sock.send_to(&resp_buf, &dst.into())?;
                     if n != resp_buf.len() {
-                        Err(Error::PartialResponse)
+                        Err(Error::PartialSend(resp_buf.len(), n))
                     } else {
                         println!(
                             "[info] offer {} client id {} lease time {:?} on {}",
@@ -253,7 +253,7 @@ fn handle_request<T: LeaseManager>(
 
                         let n = sock.send_to(&resp_buf, &dst.into())?;
                         if n != resp_buf.len() {
-                            return Err(Error::PartialResponse);
+                            return Err(Error::PartialSend(resp_buf.len(), n));
                         } else if renew {
                             println!(
                                 "[info] nak {} client id {} on {} (renew)",
@@ -295,7 +295,7 @@ fn handle_request<T: LeaseManager>(
 
                         let n = sock.send_to(&resp_buf, &dst.into())?;
                         if n != resp_buf.len() {
-                            return Err(Error::PartialResponse);
+                            return Err(Error::PartialSend(resp_buf.len(), n));
                         } else if renew {
                             println!(
                                 "[info] ack {} client id {} lease time {:?} on {} (renew)",
