@@ -1,6 +1,6 @@
 [package]
 name = "rsdsl_dhcp4d"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["HimbeerserverDE <himbeerserverde@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -18,5 +18,5 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 socket2 = { version = "0.5.1", features = ["all"] }
-sysinfo = "0.29.10"
+sysinfo = { version = "0.29.10", default-features = false }
 thiserror = "1.0"
