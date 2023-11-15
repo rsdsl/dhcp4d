@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use dhcproto::v4::{DhcpOption, Flags, Message, MessageType, Opcode, OptionCode};
 use dhcproto::{Decodable, Decoder, Encodable, Encoder};
-use rsdsl_netlinkd::link;
+use rsdsl_netlinklib::blocking::link;
 use socket2::{Domain, Socket, Type};
 use sysinfo::{ProcessExt, Signal, System, SystemExt};
 
