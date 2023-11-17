@@ -112,7 +112,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
 
         let remote = remote.as_socket_ipv4().unwrap();
 
-        match handle_request(&sock, lease_mgr.clone(), buf, &link) {
+        match handle_request(&sock, lease_mgr.clone(), buf, link.clone()) {
             Ok(_) => {}
             Err(e) => println!("[info] pkt from {} on {}: {}", remote, link, e),
         }
@@ -123,7 +123,7 @@ fn handle_request<T: LeaseManager>(
     sock: &Socket,
     lease_mgr: Arc<Mutex<T>>,
     buf: &[u8],
-    link: &str,
+    link: String,
 ) -> Result<()> {
     let dst: SocketAddrV4 = "255.255.255.255:68".parse().unwrap();
 
@@ -159,7 +159,7 @@ fn handle_request<T: LeaseManager>(
                         .persistent_free_address(client_id, hostname)
                         .ok_or(Error::PoolExhausted)?;
 
-                    let own_addr = local_ip(link)?;
+                    let own_addr = local_ip(link.clone())?;
 
                     let mut resp = Message::default();
                     let opts = resp
@@ -233,7 +233,7 @@ fn handle_request<T: LeaseManager>(
                         };
 
                     if !lease_mgr.request(requested_addr, client_id, hostname)? {
-                        let own_addr = local_ip(link)?;
+                        let own_addr = local_ip(link.clone())?;
 
                         let mut resp = Message::default();
                         let opts = resp
@@ -271,7 +271,7 @@ fn handle_request<T: LeaseManager>(
                         }
                     } else {
                         let lease_time = lease_mgr.lease_time();
-                        let own_addr = local_ip(link)?;
+                        let own_addr = local_ip(link.clone())?;
 
                         let mut resp = Message::default();
                         let opts = resp

@@ -1,6 +1,6 @@
 [package]
 name = "rsdsl_dhcp4d"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["HimbeerserverDE <himbeerserverde@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -11,9 +11,8 @@ edition = "2021"
 dhcproto = "0.8.0"
 ipnet = "2.7.1"
 libc = "0.2"
-linkaddrs = { git = "https://github.com/HimbeerserverDE/linkaddrs.git", version = "0.1.0" }
 rand = "0.8.5"
-rsdsl_netlinklib = { git = "https://github.com/rsdsl/netlinklib.git", version = "0.2.1", default-features = false, features = ["blocking", "status"] }
+rsdsl_netlinklib = { git = "https://github.com/rsdsl/netlinklib.git", version = "0.3.0", default-features = false, features = ["addr", "blocking", "status"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"

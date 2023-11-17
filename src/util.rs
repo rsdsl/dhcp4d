@@ -2,7 +2,9 @@ use crate::{Error, Result};
 
 use std::ffi::{c_char, c_int};
 use std::io;
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
+
+use rsdsl_netlinklib::blocking::addr;
 
 /// Helper macro to execute a system call that returns an `io::Result`.
 macro_rules! syscall {
@@ -25,11 +27,18 @@ pub fn format_client_id(client_id: &[u8]) -> Result<String> {
         .ok_or(Error::EmptyClientId)
 }
 
-pub fn local_ip(link: &str) -> Result<Ipv4Addr> {
-    Ok(linkaddrs::ipv4_addresses(link.to_owned())?
-        .first()
-        .ok_or(Error::NoIpv4Addr(link.to_owned()))?
-        .addr())
+pub fn local_ip(link: String) -> Result<Ipv4Addr> {
+    addr::get(link.clone())?
+        .into_iter()
+        .filter_map(|addr| {
+            if let IpAddr::V4(v4) = addr {
+                Some(v4)
+            } else {
+                None
+            }
+        })
+        .next()
+        .ok_or(Error::NoIpv4Addr(link))
 }
 
 #[allow(clippy::missing_safety_doc)]

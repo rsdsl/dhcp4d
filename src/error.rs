@@ -35,8 +35,6 @@ pub enum Error {
     DhcprotoDecode(#[from] dhcproto::error::DecodeError),
     #[error("dhcproto encode error: {0}")]
     DhcprotoEncode(#[from] dhcproto::error::EncodeError),
-    #[error("linkaddrs error: {0}")]
-    LinkAddrs(#[from] linkaddrs::Error),
     #[error("netlinklib error: {0}")]
     Netlinklib(#[from] rsdsl_netlinklib::Error),
     #[error("serde_json error: {0}")]
