@@ -4,7 +4,7 @@ use std::ffi::{c_char, c_int};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr};
 
-use rsdsl_netlinklib::blocking::addr;
+use rsdsl_netlinklib::blocking::Connection;
 
 /// Helper macro to execute a system call that returns an `io::Result`.
 macro_rules! syscall {
@@ -27,8 +27,8 @@ pub fn format_client_id(client_id: &[u8]) -> Result<String> {
         .ok_or(Error::EmptyClientId)
 }
 
-pub fn local_ip(link: String) -> Result<Ipv4Addr> {
-    addr::get(link.clone())?
+pub fn local_ip(conn: &Connection, link: String) -> Result<Ipv4Addr> {
+    conn.address_get(link.clone())?
         .into_iter()
         .filter_map(|addr| {
             if let IpAddr::V4(v4) = addr {
