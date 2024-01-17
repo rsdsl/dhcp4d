@@ -4,6 +4,7 @@ use std::ffi::{c_char, c_int};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr};
 
+use dhcproto::v4::DhcpOption;
 use rsdsl_netlinklib::blocking::Connection;
 
 /// Helper macro to execute a system call that returns an `io::Result`.
@@ -19,12 +20,19 @@ macro_rules! syscall {
     }};
 }
 
-pub fn format_client_id(client_id: &[u8]) -> Result<String> {
+pub fn gen_client_id(hwaddr: &[u8]) -> DhcpOption {
+    let mut client_id = vec![0x01];
+    client_id.extend_from_slice(hwaddr);
+
+    DhcpOption::ClientIdentifier(client_id)
+}
+
+pub fn format_client_id(client_id: &[u8]) -> String {
     client_id
         .iter()
         .map(|octet| format!("{:02x}", octet))
         .reduce(|acc, octet| acc + ":" + &octet)
-        .ok_or(Error::EmptyClientId)
+        .unwrap_or(String::new())
 }
 
 pub fn local_ip(conn: &Connection, link: String) -> Result<Ipv4Addr> {

@@ -531,7 +531,7 @@ dependencies = [
 
 [[package]]
 name = "rsdsl_dhcp4d"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "dhcproto",
  "ipnet",

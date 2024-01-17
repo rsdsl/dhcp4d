@@ -5,16 +5,12 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("empty client id")]
-    EmptyClientId,
     #[error("unhandled or unknown message type {0:?}")]
     InvalidMsgType(MessageType),
     #[error("unhandled or unknown opcode {0:?}")]
     InvalidOpcode(Opcode),
     #[error("missing ip address in dhcprequest")]
     NoAddrRequested,
-    #[error("missing client id")]
-    NoClientId,
     #[error("no ipv4 address on interface {0}")]
     NoIpv4Addr(String),
     #[error("missing message type")]

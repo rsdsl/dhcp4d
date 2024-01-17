@@ -1,5 +1,5 @@
 use rsdsl_dhcp4d::lease::{LeaseFileManager, LeaseFileManagerConfig, LeaseManager};
-use rsdsl_dhcp4d::util::{format_client_id, local_ip, setsockopt};
+use rsdsl_dhcp4d::util::*;
 use rsdsl_dhcp4d::{Error, Result};
 
 use std::ffi::CString;
@@ -142,10 +142,8 @@ fn handle_request<T: LeaseManager>(
 
             match msg_type {
                 MessageType::Discover => {
-                    let client_id = match opts
-                        .get(OptionCode::ClientIdentifier)
-                        .ok_or(Error::NoClientId)?
-                    {
+                    let chid = gen_client_id(msg.chaddr());
+                    let client_id = match opts.get(OptionCode::ClientIdentifier).unwrap_or(&chid) {
                         DhcpOption::ClientIdentifier(id) => id,
                         _ => unreachable!(),
                     };
@@ -193,7 +191,7 @@ fn handle_request<T: LeaseManager>(
                         println!(
                             "[info] offer {} client id {} lease time {:?} on {}",
                             lease.address,
-                            format_client_id(client_id)?,
+                            format_client_id(client_id),
                             lease.lease_time,
                             link
                         );
@@ -204,10 +202,8 @@ fn handle_request<T: LeaseManager>(
                 MessageType::Request => {
                     let mut lease_mgr = lease_mgr.lock().unwrap();
 
-                    let client_id = match opts
-                        .get(OptionCode::ClientIdentifier)
-                        .ok_or(Error::NoClientId)?
-                    {
+                    let chid = gen_client_id(msg.chaddr());
+                    let client_id = match opts.get(OptionCode::ClientIdentifier).unwrap_or(&chid) {
                         DhcpOption::ClientIdentifier(id) => id,
                         _ => unreachable!(),
                     };
@@ -261,14 +257,14 @@ fn handle_request<T: LeaseManager>(
                             println!(
                                 "[info] nak {} client id {} on {} (renew)",
                                 requested_addr,
-                                format_client_id(client_id)?,
+                                format_client_id(client_id),
                                 link
                             );
                         } else {
                             println!(
                                 "[info] nak {} client id {} on {}",
                                 requested_addr,
-                                format_client_id(client_id)?,
+                                format_client_id(client_id),
                                 link
                             );
                         }
@@ -303,7 +299,7 @@ fn handle_request<T: LeaseManager>(
                             println!(
                                 "[info] ack {} client id {} lease time {:?} on {} (renew)",
                                 requested_addr,
-                                format_client_id(client_id)?,
+                                format_client_id(client_id),
                                 lease_time,
                                 link
                             );
@@ -311,7 +307,7 @@ fn handle_request<T: LeaseManager>(
                             println!(
                                 "[info] ack {} client id {} lease time {:?} on {}",
                                 requested_addr,
-                                format_client_id(client_id)?,
+                                format_client_id(client_id),
                                 lease_time,
                                 link
                             );
@@ -325,10 +321,8 @@ fn handle_request<T: LeaseManager>(
                     Ok(())
                 }
                 MessageType::Release => {
-                    let client_id = match opts
-                        .get(OptionCode::ClientIdentifier)
-                        .ok_or(Error::NoClientId)?
-                    {
+                    let chid = gen_client_id(msg.chaddr());
+                    let client_id = match opts.get(OptionCode::ClientIdentifier).unwrap_or(&chid) {
                         DhcpOption::ClientIdentifier(id) => id,
                         _ => unreachable!(),
                     };
@@ -344,7 +338,7 @@ fn handle_request<T: LeaseManager>(
                     println!(
                         "[info] release {} client id {} on {}",
                         released_pretty,
-                        format_client_id(client_id)?,
+                        format_client_id(client_id),
                         link
                     );
                     Ok(())
