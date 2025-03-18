@@ -128,10 +128,8 @@ pub struct LeaseDummyManager {
 }
 
 impl LeaseDummyManager {
-    pub fn new(leases: Option<Vec<Lease>>) -> Self {
-        Self {
-            leases: leases.unwrap_or(Vec::new()),
-        }
+    pub fn new(leases: Vec<Lease>) -> Self {
+        Self { leases }
     }
 
     pub fn free(&self) -> Option<Ipv4Addr> {
