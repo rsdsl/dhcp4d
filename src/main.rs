@@ -63,6 +63,7 @@ fn run(link: String, subnet_id: u8) -> Result<()> {
     if fs::metadata(&lease_file).is_err() {
         let mut file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .read(false)
             .write(true)
             .open(&lease_file)?;
