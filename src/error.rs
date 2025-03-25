@@ -1,40 +1,96 @@
-use std::{ffi, io, net};
+use std::{ffi, fmt, io, net};
 
 use dhcproto::v4::{MessageType, Opcode};
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum Error {
-    #[error("unhandled or unknown message type {0:?}")]
     InvalidMsgType(MessageType),
-    #[error("unhandled or unknown opcode {0:?}")]
     InvalidOpcode(Opcode),
-    #[error("missing ip address in dhcprequest")]
     NoAddrRequested,
-    #[error("no ipv4 address on interface {0}")]
     NoIpv4Addr(String),
-    #[error("missing message type")]
     NoMsgType,
-    #[error("failed to send whole packet (expected {0}, got {1})")]
     PartialSend(usize, usize),
-    #[error("address pool exhausted")]
     PoolExhausted,
 
-    #[error("can't parse network address: {0}")]
-    AddrParseError(#[from] net::AddrParseError),
-    #[error("string contains nul bytes: {0}")]
-    Nul(#[from] ffi::NulError),
-    #[error("io error: {0}")]
-    Io(#[from] io::Error),
+    AddrParseError(net::AddrParseError),
+    Nul(ffi::NulError),
+    Io(io::Error),
 
-    #[error("dhcproto decode error: {0}")]
-    DhcprotoDecode(#[from] dhcproto::error::DecodeError),
-    #[error("dhcproto encode error: {0}")]
-    DhcprotoEncode(#[from] dhcproto::error::EncodeError),
-    #[error("netlinklib error: {0}")]
-    Netlinklib(#[from] rsdsl_netlinklib::Error),
-    #[error("serde_json error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
+    DhcprotoDecode(dhcproto::error::DecodeError),
+    DhcprotoEncode(dhcproto::error::EncodeError),
+    Netlinklib(rsdsl_netlinklib::Error),
+    SerdeJson(serde_json::Error),
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidMsgType(t) => write!(f, "unhandled or unknown message type {:?}", t)?,
+            Self::InvalidOpcode(op) => write!(f, "unhandled or unknown opcode {:?}", op)?,
+            Self::NoAddrRequested => write!(f, "missing ip address in dhcprequest")?,
+            Self::NoIpv4Addr(link) => write!(f, "no ipv4 address on interface {}", link)?,
+            Self::NoMsgType => write!(f, "missing message type")?,
+            Self::PartialSend(want, got) => write!(
+                f,
+                "failed to send whole packet (expected {}, got {})",
+                want, got
+            )?,
+            Self::PoolExhausted => write!(f, "address pool exhausted")?,
+            Self::AddrParseError(e) => write!(f, "can't parse network address: {}", e)?,
+            Self::Nul(e) => write!(f, "string contains nul bytes: {}", e)?,
+            Self::Io(e) => write!(f, "io error: {}", e)?,
+            Self::DhcprotoDecode(e) => write!(f, "dhcproto decode error: {}", e)?,
+            Self::DhcprotoEncode(e) => write!(f, "dhcproto encode error: {}", e)?,
+            Self::Netlinklib(e) => write!(f, "netlinklib error: {}", e)?,
+            Self::SerdeJson(e) => write!(f, "serde_json error: {}", e)?,
+        }
+
+        Ok(())
+    }
+}
+
+impl From<net::AddrParseError> for Error {
+    fn from(e: net::AddrParseError) -> Error {
+        Error::AddrParseError(e)
+    }
+}
+
+impl From<ffi::NulError> for Error {
+    fn from(e: ffi::NulError) -> Error {
+        Error::Nul(e)
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Error {
+        Error::Io(e)
+    }
+}
+
+impl From<dhcproto::error::DecodeError> for Error {
+    fn from(e: dhcproto::error::DecodeError) -> Error {
+        Error::DhcprotoDecode(e)
+    }
+}
+
+impl From<dhcproto::error::EncodeError> for Error {
+    fn from(e: dhcproto::error::EncodeError) -> Error {
+        Error::DhcprotoEncode(e)
+    }
+}
+
+impl From<rsdsl_netlinklib::Error> for Error {
+    fn from(e: rsdsl_netlinklib::Error) -> Error {
+        Error::Netlinklib(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Error {
+        Error::SerdeJson(e)
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
